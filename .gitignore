@@ -152,11 +152,6 @@ logs*
 results*/
 outputs*/
 
-*.jpg
-*.png
-*.mp4
-*.gif
-
 core.*
 Face-Similarity/
 *.zip
