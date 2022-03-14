@@ -27,33 +27,27 @@
     bash scripts/mmvoxceleb/text_to_video/evaluation.sh
 </details>
 
+<details>
+  <summary>Text and Mask</summary>
+  
+  #### Training:
+    bash scripts/mmvoxceleb/text_and_mask/train.sh
+  #### Testing:
+    bash scripts/mmvoxceleb/text_and_mask/test.sh
+  #### For Quantitative Evaluation (FVD and PRD):
+    To Add
+</details>
 
-### Text and Mask
-Training:
-``` 
-bash scripts/mmvoxceleb/text_and_mask/train.sh
-```
-
-Testing:
-``` 
-bash scripts/mmvoxceleb/text_and_mask/test.sh
-```
-
-Evaluation:
-``` 
-To Add
-```
-
-### Text and Drawing
-Training:
-``` python
-CUDA_VISIBLE_DEVICES=4,5 python3 train.py --name train_vox_text+draw --image_text_folder data/vox-celeba-alex_v2 --dataset vox --attr_mode draw+text_dropout --visual --vc_mode mask_8x8 --num_visuals 1 --fullvc --batch_size 20 --text_seq_len 50 --dim 768 --pretrained_transformer openai_clip_visual --iters 200000 --learning_rate 1e-4 --random_resize_crop_lower_ratio 1 --clip_grad_norm 1 --lr_decay --lr_scheduler warmuplr --optimizer adam --weight_decay 0.0 --which_tokenizer simple --use_html --log_every 200 --sample_every 5000 --n_sample 4 --n_per_sample 4 --num_targets 8 --frame_num 8 --frame_step 4 --which_vae vqgan1024 --image_size 128 --beta_rel 0.5 --beta_vid 0.5 --beta_msm 7 --log_root logs --lr_scheduler_warmup 5000 --msm_strategy_prob 7,1,1,1 --msm_bernoulli_prob 0.2,0.2 --vid_strategy_prob 1,1,1,1 --dropout_vc 0.4 --dist_url tcp://localhost:10003 --vae_path pretrained_models/vae_vox.ckpt --cvae_path pretrained_models/cvae_vox.ckpt --rel_no_fully_masked --mask_predict_steps 10 20 30 --mask_predict_steps1 20 
-```
-
-Testing:
-``` python
-CUDA_VISIBLE_DEVICES=2 python3 test.py --name test_vox_text+draw --image_text_folder data/vox-celeba-alex_v2 --dataset vox --attr_mode draw+text_dropout --visual --vc_mode mask_8x8 --num_visuals 1 --fullvc --text_seq_len 50 --dim 768 --pretrained_transformer openai_clip_visual --which_tokenizer simple --use_html --num_targets 8 --frame_num 8 --frame_step 4 --which_vae vqgan1024 --image_size 128 --log_root logs --use_cvae --iters 20 --batch_size 16 --n_per_sample 4 --n_sample 1 --no_debug --mp_T 20 --dalle_path vox_bert_text+draw_bs20_200k.pt
-```
+<details>
+  <summary>Text and Drawing</summary>
+  
+  #### Training:
+    bash scripts/mmvoxceleb/text_and_drawing/train.sh
+  #### Testing:
+    bash scripts/mmvoxceleb/text_and_drawing/test.sh
+  #### For Quantitative Evaluation (FVD and PRD):
+    To Add
+</details>
 
 
 ### Drawing and Mask
