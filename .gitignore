@@ -169,3 +169,5 @@ vox_embeddings/
 */*/*.html
 
 logs_test/
+
+*.DS_Store*
