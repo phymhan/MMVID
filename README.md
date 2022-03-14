@@ -15,21 +15,25 @@
 
 # MMVID Code
 ## Multi-Modal Vox-Celeb
-### Text-to-Video
-Training:
-``` 
-bash scripts/mmvoxceleb/text_to_video/train.sh
-```
+<details>
+  <summary>Text-to-Video</summary>
 
-Testing:
-``` 
-bash scripts/mmvoxceleb/text_to_video/test.sh
-```
+    Training:
+    ``` 
+    bash scripts/mmvoxceleb/text_to_video/train.sh
+    ```
 
-For Quantitative Evaluation (FVD and PRD):
-```
-bash scripts/mmvoxceleb/text_to_video/evaluation.sh
-```
+    Testing:
+    ``` 
+    bash scripts/mmvoxceleb/text_to_video/test.sh
+    ```
+
+    For Quantitative Evaluation (FVD and PRD):
+    ```
+    bash scripts/mmvoxceleb/text_to_video/evaluation.sh
+    ```
+</details>
+
 
 ### Text and Mask
 Training:
