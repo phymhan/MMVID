@@ -16,6 +16,9 @@
 # MMVID Code
 ## Multi-Modal Vox-Celeb
 
+- [ ] TO DO: add explanation
+- [ ] TO DO: add evaluation scripts
+
 <details>
   <summary>Text-to-Video</summary>
   
@@ -49,17 +52,19 @@
     To Add
 </details>
 
+<details>
+  <summary>Drawing and Mask</summary>
+  
+  #### Training:
+    bash scripts/mmvoxceleb/drawing_and_mask/train.sh
+  #### Testing:
+    bash scripts/mmvoxceleb/drawing_and_mask/test.sh
+  #### For Quantitative Evaluation (FVD and PRD):
+    To Add
+</details>
 
-### Drawing and Mask
-Training:
-``` python
-CUDA_VISIBLE_DEVICES=6,7 python3 train.py --name train_vox_draw+mask --image_text_folder data/vox-celeba-alex_v2 --dataset vox --attr_mode draw+mask2 --visual --vc_mode mask2_8x8 --num_visuals 2 --fullvc --batch_size 20 --text_seq_len 20 --dim 768 --pretrained_transformer openai_clip_visual --iters 200000 --learning_rate 1e-4 --random_resize_crop_lower_ratio 1 --clip_grad_norm 1 --lr_decay --lr_scheduler warmuplr --optimizer adam --weight_decay 0.0 --which_tokenizer simple --use_html --log_every 200 --sample_every 5000 --n_sample 4 --n_per_sample 4 --num_targets 8 --frame_num 8 --frame_step 4 --which_vae vqgan1024 --image_size 128 --beta_rel 0.5 --beta_vid 0.5 --beta_msm 7 --log_root logs --lr_scheduler_warmup 5000 --msm_strategy_prob 7,1,1,1 --msm_bernoulli_prob 0.2,0.2 --vid_strategy_prob 1,1,1,1 --dropout_vc 0.4 --dist_url tcp://localhost:10004 --vae_path pretrained_models/vae_vox.ckpt --cvae_path pretrained_models/cvae_vox.ckpt --rel_no_fully_masked --mask_predict_steps 10 20 30 --mask_predict_steps1 20 
-```
 
-Testing:
-``` python
-CUDA_VISIBLE_DEVICES=0 python3 test.py --name test_vox_draw+mask --image_text_folder data/vox-celeba-alex_v2 --dataset vox --attr_mode draw+mask2 --visual --vc_mode mask2_8x8 --num_visuals 2 --fullvc --text_seq_len 20 --dim 768 --pretrained_transformer openai_clip_visual --which_tokenizer simple --use_html --num_targets 8 --frame_num 8 --frame_step 4 --which_vae vqgan1024 --image_size 128 --log_root logs --use_cvae --iters 20 --batch_size 16 --n_per_sample 4 --n_sample 1 --no_debug --mp_T 20 --dalle_path vox_bert_draw+mask_bs20_92k.pt
-```
+
 
 
 ### Image and Mask
