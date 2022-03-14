@@ -19,10 +19,8 @@ This repo contains the code for training and testing, models, and data for MMVID
 > Snap Inc., Rutgers University<br>
 > CVPR 2022
 
-# Multi-Modal Vox-Celeb Dataset
 
-[Dataset](mm_vox_celeb/README.md)
-# MMVID Code
+## MMVID Code 
 ## Multi-Modal Vox-Celeb
 
 - [ ] TO DO: add explanation
@@ -139,10 +137,12 @@ This repo contains the code for training and testing, models, and data for MMVID
 
 
 
-# Pretrained Models
+## Pretrained Models
 [checkpoint folder](https://drive.google.com/drive/folders/1q_YdEBylrAWeuSleq6Jp58epE3KM-oXK?usp=sharing)
 
-## Multi-Modal Vox-Celeb
+## Multi-Modal Vox-Celeb Dataset
+
+[Dataset](mm_vox_celeb/README.md)
 
 ## Citation
 
