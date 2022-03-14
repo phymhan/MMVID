@@ -13,11 +13,13 @@ import numpy as np
 import torchvision.transforms.functional as TF
 
 import decord
+
 decord.bridge.set_bridge("torch")
 
 import mm_vox_celeb.pcfg as pcfg
 
 import pdb
+
 st = pdb.set_trace
 
 ATTR = [
@@ -28,26 +30,60 @@ ATTR = [
     'Male', 'Mouth_Slightly_Open', 'Mustache', 'Narrow_Eyes', 'No_Beard',
     'Oval_Face', 'Pale_Skin', 'Pointy_Nose', 'Receding_Hairline',
     'Rosy_Cheeks', 'Sideburns', 'Smiling', 'Straight_Hair', 'Wavy_Hair',
-    'Wearing_Earrings', 'Wearing_Hat', 'Wearing_Lipstick',
-    'Wearing_Necklace', 'Wearing_Necktie', 'Young'
+    'Wearing_Earrings', 'Wearing_Hat', 'Wearing_Lipstick', 'Wearing_Necklace',
+    'Wearing_Necktie', 'Young'
 ]
 ATTR_NP = np.array(ATTR)
-NAME = [a.replace('No_', '').replace('Wearing_', '').replace('_', ' ').lower() for a in ATTR]
+NAME = [
+    a.replace('No_', '').replace('Wearing_', '').replace('_', ' ').lower()
+    for a in ATTR
+]
 NAME[0] = '5 o\'clock shadow'
 NAME = np.array(NAME)
 
 GET_NAME = {a: NAME[i] for i, a in enumerate(ATTR)}
 
 ATTR_VERB = {
-    '5_o_Clock_Shadow': 'has', 'Arched_Eyebrows': 'has', 'Attractive': 'is', 'Bags_Under_Eyes': 'has',
-    'Bald': 'is', 'Bangs': 'has', 'Big_Lips': 'has', 'Big_Nose': 'has', 'Black_Hair': 'has', 'Blond_Hair': 'has',
-    'Blurry': 'is', 'Brown_Hair': 'has', 'Bushy_Eyebrows': 'has', 'Chubby': 'is', 'Double_Chin': 'has',
-    'Eyeglasses': 'wear', 'Goatee': 'wear', 'Gray_Hair': 'has', 'Heavy_Makeup': 'has', 'High_Cheekbones': 'has',
-    'Male': 'is', 'Mouth_Slightly_Open': 'na', 'Mustache': 'has', 'Narrow_Eyes': 'has', 'No_Beard': 'has',
-    'Oval_Face': 'has', 'Pale_Skin': 'has', 'Pointy_Nose': 'has', 'Receding_Hairline': 'has',
-    'Rosy_Cheeks': 'has', 'Sideburns': 'has', 'Smiling': 'is', 'Straight_Hair': 'has', 'Wavy_Hair': 'has',
-    'Wearing_Earrings': 'wear', 'Wearing_Hat': 'wear', 'Wearing_Lipstick': 'wear',
-    'Wearing_Necklace': 'wear', 'Wearing_Necktie': 'wear', 'Young': 'is',
+    '5_o_Clock_Shadow': 'has',
+    'Arched_Eyebrows': 'has',
+    'Attractive': 'is',
+    'Bags_Under_Eyes': 'has',
+    'Bald': 'is',
+    'Bangs': 'has',
+    'Big_Lips': 'has',
+    'Big_Nose': 'has',
+    'Black_Hair': 'has',
+    'Blond_Hair': 'has',
+    'Blurry': 'is',
+    'Brown_Hair': 'has',
+    'Bushy_Eyebrows': 'has',
+    'Chubby': 'is',
+    'Double_Chin': 'has',
+    'Eyeglasses': 'wear',
+    'Goatee': 'wear',
+    'Gray_Hair': 'has',
+    'Heavy_Makeup': 'has',
+    'High_Cheekbones': 'has',
+    'Male': 'is',
+    'Mouth_Slightly_Open': 'na',
+    'Mustache': 'has',
+    'Narrow_Eyes': 'has',
+    'No_Beard': 'has',
+    'Oval_Face': 'has',
+    'Pale_Skin': 'has',
+    'Pointy_Nose': 'has',
+    'Receding_Hairline': 'has',
+    'Rosy_Cheeks': 'has',
+    'Sideburns': 'has',
+    'Smiling': 'is',
+    'Straight_Hair': 'has',
+    'Wavy_Hair': 'has',
+    'Wearing_Earrings': 'wear',
+    'Wearing_Hat': 'wear',
+    'Wearing_Lipstick': 'wear',
+    'Wearing_Necklace': 'wear',
+    'Wearing_Necktie': 'wear',
+    'Young': 'is',
 }
 
 NEGATE_IDX = [ATTR.index(a) for a in ATTR if a.startswith('No_')]
@@ -55,6 +91,7 @@ GENDER_IDX = ATTR.index('Male')
 
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
 VID_EXTENSIONS = ['.mp4', '.avi']
+
 
 def is_image_file(filename):
     """Checks if a file is an image.
@@ -91,16 +128,19 @@ def to_tensor(image):
         return None
     return image_tensor
 
+
 def read_frames_imagestack(video_path, frame_idxs=None):
     imgs = Image.open(video_path).convert('RGB')  # size (W, H)
     imgs = np.array(imgs)  # shape (H, W, C)
     horizontal = imgs.shape[1] > imgs.shape[0]
-    shorter, longer = min(imgs.shape[0], imgs.shape[1]), max(imgs.shape[0], imgs.shape[1])
+    shorter, longer = min(imgs.shape[0],
+                          imgs.shape[1]), max(imgs.shape[0], imgs.shape[1])
     vlen = longer // shorter
     frames = np.stack(np.split(imgs, vlen, axis=1 if horizontal else 0))
     if frame_idxs:
         frames = frames[frame_idxs, ...]
-    frames = torch.from_numpy(frames).permute(0, 3, 1, 2).float() / 255  # tensor of shape (T, C, H, W), range (0, 1)
+    frames = torch.from_numpy(frames).permute(
+        0, 3, 1, 2).float() / 255  # tensor of shape (T, C, H, W), range (0, 1)
     return frames
 
 
@@ -148,9 +188,9 @@ class VoxDataset(Dataset):
         self.frame_num = frame_num
         self.frame_step = frame_step
         self.nframe_num = nframe_num
-        self.min_len  = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
+        self.min_len = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
         self.unbind = False
-        self.return_vc  = return_vc
+        self.return_vc = return_vc
         self.return_neg = return_neg
         self.video_only = video_only
         self.attr_mode = attr_mode
@@ -160,30 +200,37 @@ class VoxDataset(Dataset):
         self.root = dataroot
         video_root = os.path.join(dataroot, 'video')
         text_root = os.path.join(dataroot, 'txt')
-        cache = path.parent / (path.name + '_local.pkl') if cache is None else Path(cache)
+        cache = path.parent / (path.name +
+                               '_local.pkl') if cache is None else Path(cache)
         if cache is not None and cache.exists():
             with open(cache, 'rb') as f:
                 cache_data = pickle.load(f)
-            assert(isinstance(cache_data, dict))
+            assert (isinstance(cache_data, dict))
             self.keys = cache_data['keys']
-            self.texts, self.videos, self.lengths = cache_data['texts'], cache_data['videos'], cache_data['lengths']
+            self.texts, self.videos, self.lengths = cache_data[
+                'texts'], cache_data['videos'], cache_data['lengths']
         else:
             text_files = os.listdir(text_root)
             text_dict = dict()
             video_dict = dict()
             length_dict = dict()
             keys_list = list()
-            for i, video in enumerate(tqdm(os.listdir(video_root), desc="Counting videos")):
+            for i, video in enumerate(
+                    tqdm(os.listdir(video_root), desc="Counting videos")):
                 key = video  # no stem
                 text = key + '.txt'
-                if os.path.isdir(os.path.join(video_root, key)) and text in text_files:
-                    frames = natsorted(os.listdir(os.path.join(video_root, key)))
+                if os.path.isdir(os.path.join(video_root,
+                                              key)) and text in text_files:
+                    frames = natsorted(
+                        os.listdir(os.path.join(video_root, key)))
                 else:
                     continue
                 frame_list = []
                 for j, frame_name in enumerate(frames):
-                    if is_image_file(os.path.join(video_root, key, frame_name)):
-                        frame_list.append(os.path.join('video', key, frame_name))
+                    if is_image_file(os.path.join(video_root, key,
+                                                  frame_name)):
+                        frame_list.append(
+                            os.path.join('video', key, frame_name))
                 if len(frame_list) > 0:
                     # add entry
                     keys_list.append(key)
@@ -204,9 +251,8 @@ class VoxDataset(Dataset):
                             'texts': self.texts,
                             'videos': self.videos,
                             'lengths': self.lengths,
-                        }, f
-                    )
-        
+                        }, f)
+
         attr_cache = path.parent / (path.name + '_attr_dict_vox2.pkl')
         if attr_cache.exists():
             with open(attr_cache, 'rb') as f:
@@ -231,7 +277,6 @@ class VoxDataset(Dataset):
                 pickle.dump(attr_dict, f)
             self.attr_dict = attr_dict
 
-
         # Filter out videos that are too short
         keys_keep = [k for k in self.keys if self.lengths[k] >= self.min_len]
         if keys is not None:
@@ -245,7 +290,8 @@ class VoxDataset(Dataset):
         for attr_type in self.attr_dict:
             attr_dict[attr_type] = {}
             for attr in self.attr_dict[attr_type].keys():
-                attr_dict[attr_type][attr] = list(set(self.attr_dict[attr_type][attr]) & set(keys_keep))
+                attr_dict[attr_type][attr] = list(
+                    set(self.attr_dict[attr_type][attr]) & set(keys_keep))
         self.attr_dict = attr_dict
 
         if self.mode == 'video':
@@ -256,33 +302,30 @@ class VoxDataset(Dataset):
             raise NotImplementedError
 
         if deterministic:
-            self.video_transform = T.Compose(
-                [
-                    T.Resize(image_size),
-                    T.CenterCrop(image_size),
-                ]
-            )
+            self.video_transform = T.Compose([
+                T.Resize(image_size),
+                T.CenterCrop(image_size),
+            ])
         else:
-            self.video_transform = T.Compose(
-                [
-                    # transforms.ToTensor(),  # this should be done in __getitem__
-                    # T.RandomHorizontalFlip(),
-                    T.Resize(image_size),
-                    # T.CenterCrop(image_size),
-                    T.RandomResizedCrop(
-                        image_size,
-                        scale=(self.resize_ratio, 1.),
-                        ratio=(1., 1.)
-                    ),
-                ]
-            )
+            self.video_transform = T.Compose([
+                # transforms.ToTensor(),  # this should be done in __getitem__
+                # T.RandomHorizontalFlip(),
+                T.Resize(image_size),
+                # T.CenterCrop(image_size),
+                T.RandomResizedCrop(image_size,
+                                    scale=(self.resize_ratio, 1.),
+                                    ratio=(1., 1.)),
+            ])
 
     def _get_video(self, index):
         key = self.keys[index]
         video_len = self.lengths[key]
-        start_idx = 0 if self.deterministic else random.randint(0, video_len - (self.frame_num - 1) * self.frame_step - 1)  # inclusive
+        start_idx = 0 if self.deterministic else random.randint(
+            0, video_len - (self.frame_num - 1) * self.frame_step -
+            1)  # inclusive
         frames = []
-        for i in range(start_idx, start_idx+self.frame_num*self.frame_step, self.frame_step):
+        for i in range(start_idx, start_idx + self.frame_num * self.frame_step,
+                       self.frame_step):
             img = Image.open(os.path.join(self.root, self.videos[key][i]))
             frames.append(to_tensor(img))  # to_tensor done here
         frames = torch.stack(frames, 0)
@@ -293,12 +336,15 @@ class VoxDataset(Dataset):
             visual = self.video_transform(to_tensor(visual))
             return frames, key, visual, start_idx
         return frames, key, start_idx
-    
+
     def _get_video_by_key(self, key):
         video_len = self.lengths[key]
-        start_idx = 0 if self.deterministic else random.randint(0, video_len - (self.frame_num - 1) * self.frame_step - 1)  # inclusive
+        start_idx = 0 if self.deterministic else random.randint(
+            0, video_len - (self.frame_num - 1) * self.frame_step -
+            1)  # inclusive
         frames = []
-        for i in range(start_idx, start_idx+self.frame_num*self.frame_step, self.frame_step):
+        for i in range(start_idx, start_idx + self.frame_num * self.frame_step,
+                       self.frame_step):
             img = Image.open(os.path.join(self.root, self.videos[key][i]))
             frames.append(to_tensor(img))  # to_tensor done here
         frames = torch.stack(frames, 0)
@@ -313,7 +359,8 @@ class VoxDataset(Dataset):
         delta_r = int(video_len * (1 - keep_ratio) / 2)
         delta_l = int(video_len * (1 - keep_ratio)) - delta_r
         frame_idx = random.randint(delta_l, video_len - delta_r - 1)
-        frame = Image.open(os.path.join(self.root, self.videos[key][frame_idx]))
+        frame = Image.open(os.path.join(self.root,
+                                        self.videos[key][frame_idx]))
         frame = self.video_transform(to_tensor(frame))
         if True:
             idx = random.randint(delta_l, video_len - delta_r - 1)
@@ -332,7 +379,8 @@ class VoxDataset(Dataset):
             frame_id = index - self.cumsum[video_id] - 1
         key = self.keys[video_id]
         frame = Image.open(os.path.join(self.root, self.videos[key][frame_id]))
-        frame = self.video_transform(to_tensor(frame))  # no ToTensor in transform
+        frame = self.video_transform(
+            to_tensor(frame))  # no ToTensor in transform
         return frame, key
 
     def _get_nframe(self, index):
@@ -346,7 +394,8 @@ class VoxDataset(Dataset):
         key = self.keys[video_id]
         frames = []
         for i in range(self.nframe_num):
-            frame = Image.open(os.path.join(self.root, self.videos[key][frame_id + i]))
+            frame = Image.open(
+                os.path.join(self.root, self.videos[key][frame_id + i]))
             frames.append(to_tensor(frame))
         frames = torch.stack(frames, 0)
         frames = self.video_transform(frames)
@@ -367,12 +416,13 @@ class VoxDataset(Dataset):
         if self.shuffle:
             return self.random_sample()
         return self.sequential_sample(ind=ind)
-    
+
     def _get_label(self, key):
-        label_file = Path(os.path.join(self.root, self.texts[key].replace('txt/', 'label/')))
+        label_file = Path(
+            os.path.join(self.root, self.texts[key].replace('txt/', 'label/')))
         label = label_file.read_text().rstrip()
         return label
-    
+
     def _sample_negative_label(self, key):
         label = self._get_label(key)
         key_ = choice(self.keys)
@@ -381,7 +431,7 @@ class VoxDataset(Dataset):
             key_ = choice(self.keys)
             label_ = self._get_label(key_)
         return key_
-    
+
     def _tokenize_text(self, description):
         tokenized_text = self.tokenizer.tokenize(
             description,
@@ -430,11 +480,14 @@ class VoxDataset(Dataset):
                     k = self.attr_dict['cat1'][yi][indd]
                     frames, _ = self._get_video_by_key(k)
                     image_tensor.append(frames)
-                    desc = pcfg.generate_phrase((True, 1), (ATTR_VERB[ATTR[yi]], NAME[yi]))
+                    desc = pcfg.generate_phrase(
+                        (True, 1), (ATTR_VERB[ATTR[yi]], NAME[yi]))
                     desc = 'A person' + desc[2:]
                     tokenized_text.append(self._tokenize_text(desc))
                 image_tensor = torch.stack(image_tensor)
-                tokenized_text = torch.stack(tokenized_text) if self.tokenizer is not None else tokenized_text
+                tokenized_text = torch.stack(
+                    tokenized_text
+                ) if self.tokenizer is not None else tokenized_text
                 return image_tensor, tokenized_text
             elif self.attr_mode == 'cat2':
                 image_tensor = []
@@ -489,24 +542,29 @@ class VoxDataset(Dataset):
                 tokenized_text.append(self._tokenize_text(desc))
 
                 image_tensor = torch.stack(image_tensor)
-                tokenized_text = torch.stack(tokenized_text) if self.tokenizer is not None else tokenized_text
+                tokenized_text = torch.stack(
+                    tokenized_text
+                ) if self.tokenizer is not None else tokenized_text
                 return image_tensor, tokenized_text
             elif self.attr_mode == 'mask':
                 frame_folder = os.path.join(self.root, 'mask', key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 visuals = visual1.unsqueeze(0)
                 description = f"A person in image one is talking"
             elif self.attr_mode == 'draw':
                 frame_folder = os.path.join(self.root, 'draw', draw_style, key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 visuals = visual1.unsqueeze(0)
                 description = f"A person in image one is talking"
             elif self.attr_mode == 'mask+text':
                 frame_folder = os.path.join(self.root, 'mask', key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 visuals = visual1.unsqueeze(0)
             elif self.attr_mode == 'mask+text_dropout':
                 frame_folder = os.path.join(self.root, 'mask', key)
@@ -514,34 +572,38 @@ class VoxDataset(Dataset):
                     frame = os.listdir(frame_folder)[0]
                 else:
                     frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 visuals = visual1.unsqueeze(0)
                 if random.random() < 0.1:
                     description = "null"
             elif self.attr_mode == 'draw+text':
                 frame_folder = os.path.join(self.root, 'draw', draw_style, key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 visuals = visual1.unsqueeze(0)
             elif self.attr_mode == 'draw+text_dropout':
                 frame_folder = os.path.join(self.root, 'draw', draw_style, key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 visuals = visual1.unsqueeze(0)
                 if random.random() < 0.1:
                     description = "null"
             elif self.attr_mode == 'image_same+draw':
                 frame_folder = os.path.join(self.root, 'draw', draw_style, key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 if random.random() < 0.5:
-                    visuals = torch.stack([visual, visual1], dim = 0)
+                    visuals = torch.stack([visual, visual1], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with appearance in image one and draw in image two is talking"
                     else:
                         description = f"A person with draw in image two and appearance in image one is talking"
                 else:
-                    visuals = torch.stack([visual1, visual], dim = 0)
+                    visuals = torch.stack([visual1, visual], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with draw in image one and appearance in image two is talking"
                     else:
@@ -549,15 +611,16 @@ class VoxDataset(Dataset):
             elif self.attr_mode == 'image_same+mask':
                 frame_folder = os.path.join(self.root, 'mask', key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 if random.random() < 0.5:
-                    visuals = torch.stack([visual, visual1], dim = 0)
+                    visuals = torch.stack([visual, visual1], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with appearance in image one and mask in image two is talking"
                     else:
                         description = f"A person with mask in image two and appearance in image one is talking"
                 else:
-                    visuals = torch.stack([visual1, visual], dim = 0)
+                    visuals = torch.stack([visual1, visual], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with mask in image one and appearance in image two is talking"
                     else:
@@ -565,20 +628,22 @@ class VoxDataset(Dataset):
             elif self.attr_mode == 'image+draw':
                 frame_folder = os.path.join(self.root, 'draw', draw_style, key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 pid = '#'.join(key.split('#')[:2])
                 key_ = choice(self.attr_dict['pid'][pid])
                 frame_folder = os.path.join(self.root, 'video', key_)
                 frame = choice(os.listdir(frame_folder))
-                visual2 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual2 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 if random.random() < 0.5:
-                    visuals = torch.stack([visual2, visual1], dim = 0)
+                    visuals = torch.stack([visual2, visual1], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with appearance in image one and draw in image two is talking"
                     else:
                         description = f"A person with draw in image two and appearance in image one is talking"
                 else:
-                    visuals = torch.stack([visual1, visual2], dim = 0)
+                    visuals = torch.stack([visual1, visual2], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with draw in image one and appearance in image two is talking"
                     else:
@@ -587,13 +652,15 @@ class VoxDataset(Dataset):
                 # NOTE: used for testing, makes visualizations easier
                 frame_folder = os.path.join(self.root, 'draw', draw_style, key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 pid = '#'.join(key.split('#')[:2])
                 key_ = choice(self.attr_dict['pid'][pid])
                 frame_folder = os.path.join(self.root, 'video', key_)
                 frame = choice(os.listdir(frame_folder))
-                visual2 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
-                visuals = torch.stack([visual2, visual1], dim = 0)
+                visual2 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visuals = torch.stack([visual2, visual1], dim=0)
                 if random.random() < 0.5:
                     description = f"A person with appearance in image one and draw in image two is talking"
                 else:
@@ -601,25 +668,28 @@ class VoxDataset(Dataset):
             elif self.attr_mode == 'image+mask':
                 frame_folder = os.path.join(self.root, 'mask', key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 pid = '#'.join(key.split('#')[:2])
                 key_ = choice(self.attr_dict['pid'][pid])
                 frame_folder = os.path.join(self.root, 'video', key_)
                 frame = choice(os.listdir(frame_folder))
-                visual2 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual2 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 frame_folder = os.path.join(self.root, 'mask', key_)
                 frame = choice(os.listdir(frame_folder))
-                visual3 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual3 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 if random.random() < 0.5:
-                    visuals = torch.stack([visual2, visual1], dim = 0)
-                    visuals_pos = torch.stack([visual2, visual3], dim = 0)
+                    visuals = torch.stack([visual2, visual1], dim=0)
+                    visuals_pos = torch.stack([visual2, visual3], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with appearance in image one and mask in image two is talking"
                     else:
                         description = f"A person with mask in image two and appearance in image one is talking"
                 else:
-                    visuals = torch.stack([visual1, visual2], dim = 0)
-                    visuals_pos = torch.stack([visual3, visual2], dim = 0)
+                    visuals = torch.stack([visual1, visual2], dim=0)
+                    visuals_pos = torch.stack([visual3, visual2], dim=0)
 
                     if random.random() < 0.5:
                         description = f"A person with mask in image one and appearance in image two is talking"
@@ -629,19 +699,22 @@ class VoxDataset(Dataset):
                 # NOTE: used for testing, makes visualizations easier
                 frame_folder = os.path.join(self.root, 'mask', key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 # pid = key.split('#')[0]
                 pid = '#'.join(key.split('#')[:2])
                 # key_ = choice(list(set(self.attr_dict['pid'][pid])-set([key])))
                 key_ = choice(self.attr_dict['pid'][pid])
                 frame_folder = os.path.join(self.root, 'video', key_)
                 frame = choice(os.listdir(frame_folder))
-                visual2 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual2 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 frame_folder = os.path.join(self.root, 'mask', key_)
                 frame = choice(os.listdir(frame_folder))
-                visual3 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
-                visuals = torch.stack([visual2, visual1], dim = 0)
-                visuals_pos = torch.stack([visual2, visual3], dim = 0)
+                visual3 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visuals = torch.stack([visual2, visual1], dim=0)
+                visuals_pos = torch.stack([visual2, visual3], dim=0)
                 if random.random() < 0.5:
                     description = f"A person with appearance in image one and mask in image two is talking"
                 else:
@@ -649,20 +722,23 @@ class VoxDataset(Dataset):
             elif self.attr_mode == 'draw+mask':
                 frame_folder = os.path.join(self.root, 'mask', key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 pid = '#'.join(key.split('#')[:2])
                 key_ = choice(self.attr_dict['pid'][pid])
-                frame_folder = os.path.join(self.root, 'draw', draw_style, key_)
+                frame_folder = os.path.join(self.root, 'draw', draw_style,
+                                            key_)
                 frame = choice(os.listdir(frame_folder))
-                visual2 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual2 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 if random.random() < 0.5:
-                    visuals = torch.stack([visual2, visual1], dim = 0)
+                    visuals = torch.stack([visual2, visual1], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with draw in image one and mask in image two is talking"
                     else:
                         description = f"A person with mask in image two and draw in image one is talking"
                 else:
-                    visuals = torch.stack([visual1, visual2], dim = 0)
+                    visuals = torch.stack([visual1, visual2], dim=0)
                     if random.random() < 0.5:
                         description = f"A person with mask in image one and draw in image two is talking"
                     else:
@@ -671,15 +747,18 @@ class VoxDataset(Dataset):
                 # NOTE: used for testing, makes visualizations easier
                 frame_folder = os.path.join(self.root, 'mask', key)
                 frame = choice(os.listdir(frame_folder))
-                visual1 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual1 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 # pid = key.split('#')[0]
                 pid = '#'.join(key.split('#')[:2])
                 # key_ = choice(list(set(self.attr_dict['pid'][pid])-set([key])))
                 key_ = choice(self.attr_dict['pid'][pid])
-                frame_folder = os.path.join(self.root, 'draw', draw_style, key_)
+                frame_folder = os.path.join(self.root, 'draw', draw_style,
+                                            key_)
                 frame = choice(os.listdir(frame_folder))
-                visual2 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
-                visuals = torch.stack([visual2, visual1], dim = 0)
+                visual2 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visuals = torch.stack([visual2, visual1], dim=0)
                 if random.random() < 0.5:
                     description = f"A person with draw in image one and mask in image two is talking"
                 else:
@@ -695,19 +774,22 @@ class VoxDataset(Dataset):
                     frame = os.listdir(frame_folder)[0]
                 else:
                     frame = choice(os.listdir(frame_folder))
-                visual2 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual2 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 visuals = visual2.unsqueeze(0)
                 if random.random() < 0.1:
                     description = "null"
             elif self.attr_mode == 'image+video33':
                 frame_folder = os.path.join(self.root, 'video', key)
                 frame = choice(os.listdir(frame_folder))
-                visual2 = self.video_transform(to_tensor(Image.open(os.path.join(frame_folder, frame))))
+                visual2 = self.video_transform(
+                    to_tensor(Image.open(os.path.join(frame_folder, frame))))
                 # sample motion
                 # TODO: hardcoded
                 visual_num = 3
                 visual_step = 3
-                visual3 = image_tensor[:visual_num*visual_step:visual_step,...]
+                visual3 = image_tensor[:visual_num * visual_step:visual_step,
+                                       ...]
                 visuals = torch.cat([visual2.unsqueeze(0), visual3], dim=0)
                 description = f"A person with appearance in image one and motion in the following frames is talking."
             else:
@@ -790,13 +872,16 @@ class iPERDataset(Dataset):
         self.frame_num = frame_num
         self.frame_step = frame_step
         self.nframe_num = nframe_num
-        frame_step_max = int(self.frame_step * 1.5) if slow else self.frame_step
+        frame_step_max = int(self.frame_step *
+                             1.5) if slow else self.frame_step
         if skip_min_len_check:
-            self.min_len = max(min_len, (self.frame_num - 1) * int(self.frame_step * 1.5) + 1)
+            self.min_len = max(
+                min_len, (self.frame_num - 1) * int(self.frame_step * 1.5) + 1)
         else:
-            self.min_len = max(min_len, (self.frame_num - 1) * frame_step_max + 1)
+            self.min_len = max(min_len,
+                               (self.frame_num - 1) * frame_step_max + 1)
         self.unbind = False
-        self.return_vc  = return_vc
+        self.return_vc = return_vc
         self.return_neg = return_neg
         self.video_only = video_only
         self.drop_sentence = drop_sentence
@@ -805,30 +890,37 @@ class iPERDataset(Dataset):
         self.root = dataroot
         video_root = os.path.join(dataroot, 'video')
         text_root = os.path.join(dataroot, 'txt')
-        cache = path.parent / (path.name + '_local.pkl') if cache is None else Path(cache)
+        cache = path.parent / (path.name +
+                               '_local.pkl') if cache is None else Path(cache)
         if cache is not None and cache.exists():
             with open(cache, 'rb') as f:
                 cache_data = pickle.load(f)
-            assert(isinstance(cache_data, dict))
+            assert (isinstance(cache_data, dict))
             self.keys = cache_data['keys']
-            self.texts, self.videos, self.lengths = cache_data['texts'], cache_data['videos'], cache_data['lengths']
+            self.texts, self.videos, self.lengths = cache_data[
+                'texts'], cache_data['videos'], cache_data['lengths']
         else:
             text_files = os.listdir(text_root)
             text_dict = dict()
             video_dict = dict()
             length_dict = dict()
             keys_list = list()
-            for i, video in enumerate(tqdm(os.listdir(video_root), desc="Counting videos")):
+            for i, video in enumerate(
+                    tqdm(os.listdir(video_root), desc="Counting videos")):
                 key = video  # no stem
                 text = key + '.txt'
-                if os.path.isdir(os.path.join(video_root, key)) and text in text_files:
-                    frames = natsorted(os.listdir(os.path.join(video_root, key)))
+                if os.path.isdir(os.path.join(video_root,
+                                              key)) and text in text_files:
+                    frames = natsorted(
+                        os.listdir(os.path.join(video_root, key)))
                 else:
                     continue
                 frame_list = []
                 for j, frame_name in enumerate(frames):
-                    if is_image_file(os.path.join(video_root, key, frame_name)):
-                        frame_list.append(os.path.join('video', key, frame_name))
+                    if is_image_file(os.path.join(video_root, key,
+                                                  frame_name)):
+                        frame_list.append(
+                            os.path.join('video', key, frame_name))
                 if len(frame_list) > 0:
                     # add entry
                     keys_list.append(key)
@@ -849,9 +941,8 @@ class iPERDataset(Dataset):
                             'texts': self.texts,
                             'videos': self.videos,
                             'lengths': self.lengths,
-                        }, f
-                    )
-        
+                        }, f)
+
         if return_neg:
             attr_cache = path.parent / (path.name + '_attr_dict.pkl')
             if attr_cache.exists():
@@ -860,7 +951,8 @@ class iPERDataset(Dataset):
             else:
                 attr_dict = {'text': {}}
                 for k in tqdm(self.keys):
-                    descriptions = Path(os.path.join(self.root, self.texts[k])).read_text().split('\n')
+                    descriptions = Path(os.path.join(
+                        self.root, self.texts[k])).read_text().split('\n')
                     description = descriptions[0]
                     text = description.lower().replace(',', '')
                     if text in attr_dict['text']:
@@ -885,7 +977,8 @@ class iPERDataset(Dataset):
             for attr_type in self.attr_dict:
                 attr_dict[attr_type] = {}
                 for attr in self.attr_dict[attr_type].keys():
-                    attr_dict[attr_type][attr] = list(set(self.attr_dict[attr_type][attr]) & set(keys_keep))
+                    attr_dict[attr_type][attr] = list(
+                        set(self.attr_dict[attr_type][attr]) & set(keys_keep))
             self.attr_dict = attr_dict
 
         if self.mode == 'video':
@@ -898,29 +991,24 @@ class iPERDataset(Dataset):
         # image transform
         self.deterministic = deterministic
         if deterministic:
-            self.image_transform = T.Compose(
-                [
-                    T.Resize(image_size),
-                    T.CenterCrop(image_size),
-                ]
-            )
+            self.image_transform = T.Compose([
+                T.Resize(image_size),
+                T.CenterCrop(image_size),
+            ])
         else:
-            self.image_transform = T.Compose(
-                [
-                    # transforms.ToTensor(),  # this should be done in __getitem__
-                    # T.RandomHorizontalFlip(),
-                    T.Resize(image_size),
-                    # T.CenterCrop(image_size),
-                    T.RandomResizedCrop(
-                        image_size,
-                        scale=(self.resize_ratio, 1.),
-                        ratio=(1., 1.)
-                    ),
-                ]
-            )
+            self.image_transform = T.Compose([
+                # transforms.ToTensor(),  # this should be done in __getitem__
+                # T.RandomHorizontalFlip(),
+                T.Resize(image_size),
+                # T.CenterCrop(image_size),
+                T.RandomResizedCrop(image_size,
+                                    scale=(self.resize_ratio, 1.),
+                                    ratio=(1., 1.)),
+            ])
 
     def _get_label(self, key):
-        label_file = Path(os.path.join(self.root, self.texts[key].replace('txt/', 'label/')))
+        label_file = Path(
+            os.path.join(self.root, self.texts[key].replace('txt/', 'label/')))
         label = label_file.read_text().rstrip()
         return int(label)
 
@@ -929,19 +1017,25 @@ class iPERDataset(Dataset):
             frame_step = self.frame_step
         key = self.keys[index]
         video_len = self.lengths[key]
-        start_idx = 0 if self.deterministic else random.randint(0, video_len - (self.frame_num - 1) * frame_step - 1)  # inclusive
+        start_idx = 0 if self.deterministic else random.randint(
+            0, video_len - (self.frame_num - 1) * frame_step - 1)  # inclusive
         frames = []
         if self.rep_num == 1:
-            frame_idx = range(start_idx, start_idx+self.frame_num*frame_step, frame_step)
+            frame_idx = range(start_idx,
+                              start_idx + self.frame_num * frame_step,
+                              frame_step)
         else:
-            m_step = int((video_len - (self.frame_num - 1)*frame_step)/self.rep_num)
+            m_step = int(
+                (video_len - (self.frame_num - 1) * frame_step) / self.rep_num)
             frame_idx = []
             for m in range(self.rep_num):
                 start_idx = m_step * m
-                frame_idx += list(range(start_idx, start_idx+self.frame_num*frame_step, frame_step))
+                frame_idx += list(
+                    range(start_idx, start_idx + self.frame_num * frame_step,
+                          frame_step))
         for i in frame_idx:
             img = Image.open(os.path.join(self.root, self.videos[key][i]))
-            img = T.Resize((self.image_size,self.image_size))(img)
+            img = T.Resize((self.image_size, self.image_size))(img)
             frames.append(to_tensor(img))  # to_tensor done here
         frames = torch.stack(frames, 0)
         frames = self.image_transform(frames)
@@ -960,7 +1054,8 @@ class iPERDataset(Dataset):
         delta_r = int(video_len * (1 - keep_ratio) / 2)
         delta_l = int(video_len * (1 - keep_ratio)) - delta_r
         frame_idx = random.randint(delta_l, video_len - delta_r - 1)
-        frame = Image.open(os.path.join(self.root, self.videos[key][frame_idx]))
+        frame = Image.open(os.path.join(self.root,
+                                        self.videos[key][frame_idx]))
         frame = self.image_transform(to_tensor(frame))
         if True:
             idx = random.randint(delta_l, video_len - delta_r - 1)
@@ -979,7 +1074,8 @@ class iPERDataset(Dataset):
             frame_id = index - self.cumsum[video_id] - 1
         key = self.keys[video_id]
         frame = Image.open(os.path.join(self.root, self.videos[key][frame_id]))
-        frame = self.image_transform(to_tensor(frame))  # no ToTensor in transform
+        frame = self.image_transform(
+            to_tensor(frame))  # no ToTensor in transform
         return frame, key
 
     def _get_nframe(self, index):
@@ -993,7 +1089,8 @@ class iPERDataset(Dataset):
         key = self.keys[video_id]
         frames = []
         for i in range(self.nframe_num):
-            frame = Image.open(os.path.join(self.root, self.videos[key][frame_id + i]))
+            frame = Image.open(
+                os.path.join(self.root, self.videos[key][frame_id + i]))
             frames.append(to_tensor(frame))
         frames = torch.stack(frames, 0)
         frames = self.image_transform(frames)
@@ -1079,16 +1176,18 @@ class iPERDataset(Dataset):
                     xxx = description.split(' ')[1]
                     yyy = description.split(' ')[4]
                     zzz = description.split(' ')[7]
-                    xxx = 'a person' if random.random() < 0.5 else f"person {xxx}"
+                    xxx = 'a person' if random.random(
+                    ) < 0.5 else f"person {xxx}"
                     yyy = '' if random.random() < 0.1 else f"dressed in {yyy}"
                     pose = f"'A' pose" if zzz == "'A'" else "random pose"
-                    zzz = 'is performing some pose' if random.random() < 0.5 else f"is performing {pose}"
+                    zzz = 'is performing some pose' if random.random(
+                    ) < 0.5 else f"is performing {pose}"
                     description = f"{xxx} {yyy} {zzz},"
         except IndexError as zero_captions_in_file_ex:
             print(f"An exception occurred trying to load file {text_file}.")
             print(f"Skipping index {ind}")
             return self.skip_sample(ind)
-        
+
         if self.slow:
             description = description + ' ' + slow_desc
 
@@ -1100,7 +1199,8 @@ class iPERDataset(Dataset):
 
         if self.return_neg:
             text = descriptions[0].lower().replace(',', '')
-            text_ = choice(list(set(self.attr_dict['text'].keys())-set([text])))
+            text_ = choice(
+                list(set(self.attr_dict['text'].keys()) - set([text])))
             key_ = choice(self.attr_dict['text'][text_])
             text_file = Path(os.path.join(self.root, self.texts[key_]))
             descriptions = text_file.read_text().split('\n')
@@ -1156,37 +1256,44 @@ class ShapeDataset(Dataset):
         self.frame_num = frame_num
         self.frame_step = frame_step
         self.nframe_num = nframe_num
-        self.min_len  = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
+        self.min_len = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
         self.unbind = False
-        self.return_vc  = return_vc
+        self.return_vc = return_vc
         self.image_only = image_only
 
         dataroot = str(path)
         self.root = dataroot
         video_root = os.path.join(dataroot, 'video')
         text_root = os.path.join(dataroot, 'txt')
-        cache = path.parent / (path.name + '_local.db') if cache is None else Path(cache)
+        cache = path.parent / (path.name +
+                               '_local.db') if cache is None else Path(cache)
         if cache is not None and cache.exists():
             with open(cache, 'rb') as f:
                 cache_data = pickle.load(f)
-            assert(isinstance(cache_data, dict))
-            self.texts, self.videos, self.lengths = cache_data['texts'], cache_data['videos'], cache_data['lengths']
+            assert (isinstance(cache_data, dict))
+            self.texts, self.videos, self.lengths = cache_data[
+                'texts'], cache_data['videos'], cache_data['lengths']
         else:
             text_files = os.listdir(text_root)
             video_list = []
             length_list = []
             text_list = []
-            for i, video in enumerate(tqdm(os.listdir(video_root), desc="Counting videos")):
+            for i, video in enumerate(
+                    tqdm(os.listdir(video_root), desc="Counting videos")):
                 text = video + '.txt'
-                if os.path.isdir(os.path.join(video_root, video)) and text in text_files:
-                    frames = natsorted(os.listdir(os.path.join(video_root, video)))
+                if os.path.isdir(os.path.join(video_root,
+                                              video)) and text in text_files:
+                    frames = natsorted(
+                        os.listdir(os.path.join(video_root, video)))
                 else:
                     continue
                 frame_list = []
                 for j, frame_name in enumerate(frames):
-                    if is_image_file(os.path.join(video_root, video, frame_name)):
+                    if is_image_file(
+                            os.path.join(video_root, video, frame_name)):
                         # do not include dataroot here so that cache can be shared
-                        frame_list.append(os.path.join('video', video, frame_name))
+                        frame_list.append(
+                            os.path.join('video', video, frame_name))
                 if len(frame_list) >= min_len:
                     video_list.append(frame_list)
                     length_list.append(len(frame_list))
@@ -1201,13 +1308,13 @@ class ShapeDataset(Dataset):
                             'texts': self.texts,
                             'videos': self.videos,
                             'lengths': self.lengths,
-                        }, f
-                    )
+                        }, f)
         # filter out videos that are too short
         inds = [i for i, l in enumerate(self.lengths) if l >= self.min_len]
         if keys is not None:
             keys_all = [Path(k).stem for k in self.texts]
-            inds = set(inds) & set([keys_all.index(k) for k in (set(keys) & set(keys_all))])
+            inds = set(inds) & set(
+                [keys_all.index(k) for k in (set(keys) & set(keys_all))])
         self.texts = [self.texts[i] for i in inds]
         self.videos = [self.videos[i] for i in inds]
         self.lengths = [self.lengths[i] for i in inds]
@@ -1227,38 +1334,35 @@ class ShapeDataset(Dataset):
             self._dataset_length = np.sum(self.lengthsn)
         else:
             raise NotImplementedError
-        
+
         # image transform
         if deterministic:
-            self.image_transform = T.Compose(
-                [
-                    T.Resize(image_size),
-                    T.CenterCrop(image_size),
-                ]
-            )
+            self.image_transform = T.Compose([
+                T.Resize(image_size),
+                T.CenterCrop(image_size),
+            ])
         else:
-            self.image_transform = T.Compose(
-                [
-                    # transforms.ToTensor(),  # this should be done in __getitem__
-                    # T.RandomHorizontalFlip(),
-                    T.Resize(image_size),
-                    # T.CenterCrop(image_size),
-                    T.RandomResizedCrop(
-                        image_size,
-                        scale=(self.resize_ratio, 1.),
-                        ratio=(1., 1.)
-                    ),
-                ]
-            )
+            self.image_transform = T.Compose([
+                # transforms.ToTensor(),  # this should be done in __getitem__
+                # T.RandomHorizontalFlip(),
+                T.Resize(image_size),
+                # T.CenterCrop(image_size),
+                T.RandomResizedCrop(image_size,
+                                    scale=(self.resize_ratio, 1.),
+                                    ratio=(1., 1.)),
+            ])
 
     def _get_video(self, index):
         video_len = self.lengths[index]
         if self.deterministic:
             start_idx = 0
         else:
-            start_idx = random.randint(0, video_len - (self.frame_num - 1) * self.frame_step - 1)  # inclusive
+            start_idx = random.randint(0, video_len -
+                                       (self.frame_num - 1) * self.frame_step -
+                                       1)  # inclusive
         frames = []
-        for i in range(start_idx, start_idx+self.frame_num*self.frame_step, self.frame_step):
+        for i in range(start_idx, start_idx + self.frame_num * self.frame_step,
+                       self.frame_step):
             img = Image.open(os.path.join(self.root, self.videos[index][i]))
             frames.append(to_tensor(img))  # to_tensor done here
         frames = torch.stack(frames, 0)
@@ -1267,8 +1371,9 @@ class ShapeDataset(Dataset):
             if self.deterministic:
                 idx = random.randint(0, video_len - 1)
             else:
-                idx = video_len//2
-            visual = Image.open(os.path.join(self.root, self.videos[index][idx]))
+                idx = video_len // 2
+            visual = Image.open(
+                os.path.join(self.root, self.videos[index][idx]))
             visual = self.image_transform(to_tensor(visual))
             return frames, index, visual
         return frames, index
@@ -1280,11 +1385,13 @@ class ShapeDataset(Dataset):
         delta_r = int(video_len * (1 - keep_ratio) / 2)
         delta_l = int(video_len * (1 - keep_ratio)) - delta_r
         frame_idx = random.randint(delta_l, video_len - delta_r - 1)
-        frame = Image.open(os.path.join(self.root, self.videos[index][frame_idx]))
+        frame = Image.open(
+            os.path.join(self.root, self.videos[index][frame_idx]))
         frame = self.image_transform(to_tensor(frame))
         if True:
             idx = random.randint(delta_l, video_len - delta_r - 1)
-            visual = Image.open(os.path.join(self.root, self.videos[index][idx]))
+            visual = Image.open(
+                os.path.join(self.root, self.videos[index][idx]))
             visual = self.image_transform(to_tensor(visual))
             return frame, index, visual
         return frame, index
@@ -1297,8 +1404,10 @@ class ShapeDataset(Dataset):
         else:
             video_id = np.searchsorted(self.cumsum, index) - 1
             frame_id = index - self.cumsum[video_id] - 1
-        frame = Image.open(os.path.join(self.root, self.videos[video_id][frame_id]))
-        frame = self.image_transform(to_tensor(frame))  # no ToTensor in transform
+        frame = Image.open(
+            os.path.join(self.root, self.videos[video_id][frame_id]))
+        frame = self.image_transform(
+            to_tensor(frame))  # no ToTensor in transform
         return frame, video_id
 
     def _get_nframe(self, index):
@@ -1311,14 +1420,16 @@ class ShapeDataset(Dataset):
             frame_id = index - self.cumsumn[video_id] - 1
         frames = []
         for i in range(self.nframe_num):
-            frame = Image.open(os.path.join(self.root, self.videos[video_id][frame_id + i]))
+            frame = Image.open(
+                os.path.join(self.root, self.videos[video_id][frame_id + i]))
             frames.append(to_tensor(frame))
         frames = torch.stack(frames, 0)
         frames = self.image_transform(frames)
         return frames, video_id
-    
+
     def _get_label(self, key):
-        label_path = os.path.join(self.root, self.texts[key]).replace('txt/', 'label/')
+        label_path = os.path.join(self.root,
+                                  self.texts[key]).replace('txt/', 'label/')
         label = [int(s) for s in Path(label_path).read_text().split(',')]
         return np.array(label)
 
@@ -1407,9 +1518,9 @@ class ShapeAttrDataset(Dataset):
         self.frame_num = frame_num
         self.frame_step = frame_step
         self.nframe_num = nframe_num
-        self.min_len  = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
+        self.min_len = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
         self.unbind = False
-        self.return_vc  = return_vc
+        self.return_vc = return_vc
         self.return_neg = return_neg
 
         assert (path.parent / (path.name + '_attr_dict.pkl')).exists()
@@ -1422,30 +1533,37 @@ class ShapeAttrDataset(Dataset):
         text_root = os.path.join(dataroot, 'txt')
         self.has_label = (Path(dataroot) / 'label').exists()
         self.has_visual = (Path(dataroot) / 'visual').exists()
-        cache = path.parent / (path.name + '_local.pkl') if cache is None else Path(cache)
+        cache = path.parent / (path.name +
+                               '_local.pkl') if cache is None else Path(cache)
         if cache is not None and cache.exists():
             with open(cache, 'rb') as f:
                 cache_data = pickle.load(f)
-            assert(isinstance(cache_data, dict))
+            assert (isinstance(cache_data, dict))
             self.keys = cache_data['keys']
-            self.texts, self.videos, self.lengths = cache_data['texts'], cache_data['videos'], cache_data['lengths']
+            self.texts, self.videos, self.lengths = cache_data[
+                'texts'], cache_data['videos'], cache_data['lengths']
         else:
             text_files = os.listdir(text_root)
             text_dict = dict()
             video_dict = dict()
             length_dict = dict()
             keys_list = list()
-            for i, video in enumerate(tqdm(os.listdir(video_root), desc="Counting videos")):
+            for i, video in enumerate(
+                    tqdm(os.listdir(video_root), desc="Counting videos")):
                 key = Path(video).stem
                 text = key + '.txt'
-                if os.path.isdir(os.path.join(video_root, key)) and text in text_files:
-                    frames = natsorted(os.listdir(os.path.join(video_root, key)))
+                if os.path.isdir(os.path.join(video_root,
+                                              key)) and text in text_files:
+                    frames = natsorted(
+                        os.listdir(os.path.join(video_root, key)))
                 else:
                     continue
                 frame_list = []
                 for j, frame_name in enumerate(frames):
-                    if is_image_file(os.path.join(video_root, key, frame_name)):
-                        frame_list.append(os.path.join('video', key, frame_name))
+                    if is_image_file(os.path.join(video_root, key,
+                                                  frame_name)):
+                        frame_list.append(
+                            os.path.join('video', key, frame_name))
                 if len(frame_list) >= 1:
                     # add entry
                     keys_list.append(key)
@@ -1465,8 +1583,7 @@ class ShapeAttrDataset(Dataset):
                             'texts': self.texts,
                             'videos': self.videos,
                             'lengths': self.lengths,
-                        }, f
-                    )
+                        }, f)
 
         # Filter out videos that are too short
         keys_keep = [k for k in self.keys if self.lengths[k] >= self.min_len]
@@ -1481,7 +1598,8 @@ class ShapeAttrDataset(Dataset):
         for attr_type in self.attr_dict:
             attr_dict[attr_type] = {}
             for attr in self.attr_dict[attr_type].keys():
-                attr_dict[attr_type][attr] = list(set(self.attr_dict[attr_type][attr]) & set(keys_keep))
+                attr_dict[attr_type][attr] = list(
+                    set(self.attr_dict[attr_type][attr]) & set(keys_keep))
         self.attr_dict = attr_dict
 
         if self.mode == 'video':
@@ -1493,26 +1611,20 @@ class ShapeAttrDataset(Dataset):
 
         # image transform
         if deterministic:
-            self.image_transform = T.Compose(
-                [
-                    T.Resize(image_size),
-                    T.CenterCrop(image_size),
-                ]
-            )
+            self.image_transform = T.Compose([
+                T.Resize(image_size),
+                T.CenterCrop(image_size),
+            ])
         else:
-            self.image_transform = T.Compose(
-                [
-                    # transforms.ToTensor(),  # this should be done in __getitem__
-                    # T.RandomHorizontalFlip(),
-                    T.Resize(image_size),
-                    # T.CenterCrop(image_size),
-                    T.RandomResizedCrop(
-                        image_size,
-                        scale=(self.resize_ratio, 1.),
-                        ratio=(1., 1.)
-                    ),
-                ]
-            )
+            self.image_transform = T.Compose([
+                # transforms.ToTensor(),  # this should be done in __getitem__
+                # T.RandomHorizontalFlip(),
+                T.Resize(image_size),
+                # T.CenterCrop(image_size),
+                T.RandomResizedCrop(image_size,
+                                    scale=(self.resize_ratio, 1.),
+                                    ratio=(1., 1.)),
+            ])
 
     def _get_video(self, index):
         key = self.keys[index]
@@ -1520,9 +1632,12 @@ class ShapeAttrDataset(Dataset):
         if self.deterministic:
             start_idx = 0
         else:
-            start_idx = random.randint(0, video_len - (self.frame_num - 1) * self.frame_step - 1)  # inclusive
+            start_idx = random.randint(0, video_len -
+                                       (self.frame_num - 1) * self.frame_step -
+                                       1)  # inclusive
         frames = []
-        for i in range(start_idx, start_idx+self.frame_num*self.frame_step, self.frame_step):
+        for i in range(start_idx, start_idx + self.frame_num * self.frame_step,
+                       self.frame_step):
             img = Image.open(os.path.join(self.root, self.videos[key][i]))
             frames.append(to_tensor(img))  # to_tensor done here
         frames = torch.stack(frames, 0)
@@ -1533,7 +1648,9 @@ class ShapeAttrDataset(Dataset):
             else:
                 idx = random.randint(0, video_len - 1)
             visual_path = os.path.join(self.root, self.videos[key][idx])
-            visual = Image.open(visual_path.replace('video/', 'visual/') if self.has_visual else visual_path)
+            visual = Image.open(
+                visual_path.replace('video/', 'visual/') if self.
+                has_visual else visual_path)
             visual = self.image_transform(to_tensor(visual))
             return frames, key, visual
         return frames, key
@@ -1546,7 +1663,8 @@ class ShapeAttrDataset(Dataset):
         delta_r = int(video_len * (1 - keep_ratio) / 2)
         delta_l = int(video_len * (1 - keep_ratio)) - delta_r
         frame_idx = random.randint(delta_l, video_len - delta_r - 1)
-        frame = Image.open(os.path.join(self.root, self.videos[key][frame_idx]))
+        frame = Image.open(os.path.join(self.root,
+                                        self.videos[key][frame_idx]))
         frame = self.image_transform(to_tensor(frame))
         if True:
             idx = random.randint(delta_l, video_len - delta_r - 1)
@@ -1565,7 +1683,8 @@ class ShapeAttrDataset(Dataset):
             frame_id = index - self.cumsum[video_id] - 1
         key = self.keys[video_id]
         frame = Image.open(os.path.join(self.root, self.videos[key][frame_id]))
-        frame = self.image_transform(to_tensor(frame))  # no ToTensor in transform
+        frame = self.image_transform(
+            to_tensor(frame))  # no ToTensor in transform
         return frame, key
 
     def _get_nframe(self, index):
@@ -1579,7 +1698,8 @@ class ShapeAttrDataset(Dataset):
         key = self.keys[video_id]
         frames = []
         for i in range(self.nframe_num):
-            frame = Image.open(os.path.join(self.root, self.videos[key][frame_id + i]))
+            frame = Image.open(
+                os.path.join(self.root, self.videos[key][frame_id + i]))
             frames.append(to_tensor(frame))
         frames = torch.stack(frames, 0)
         frames = self.image_transform(frames)
@@ -1625,7 +1745,8 @@ class ShapeAttrDataset(Dataset):
                 obj = f'{size} {color} {shape}'
                 key_attr = choice(self.attr_dict['object'][obj])
                 idx = random.randint(0, image_tensor.shape[0] - 1)
-                visual1 = Image.open(os.path.join(self.root, self.videos[key_attr][idx]))
+                visual1 = Image.open(
+                    os.path.join(self.root, self.videos[key_attr][idx]))
                 visual1 = self.image_transform(to_tensor(visual1))
                 visuals = visual1
                 description = f'An object in image one is moving {motion}'
@@ -1636,42 +1757,47 @@ class ShapeAttrDataset(Dataset):
                 obj = f'{size} {color} {shape}'
                 key_attr = choice(self.attr_dict['object'][obj])
                 idx = random.randint(0, image_tensor.shape[0] - 1)
-                visual1 = Image.open(os.path.join(self.root, self.videos[key_attr][idx]))
+                visual1 = Image.open(
+                    os.path.join(self.root, self.videos[key_attr][idx]))
                 visual1 = self.image_transform(to_tensor(visual1))
                 visual2 = visual
-                visuals = torch.stack([visual1, visual2], dim = 0)
+                visuals = torch.stack([visual1, visual2], dim=0)
                 description = f'An object in image one with background in image two is moving {motion}'
             elif self.attr_mode == 'object+same_background+rand':
                 obj = f'{size} {color} {shape}'
                 key_attr = choice(self.attr_dict['object'][obj])
                 idx = random.randint(0, image_tensor.shape[0] - 1)
-                visual1 = Image.open(os.path.join(self.root, self.videos[key_attr][idx]))
+                visual1 = Image.open(
+                    os.path.join(self.root, self.videos[key_attr][idx]))
                 visual1 = self.image_transform(to_tensor(visual1))
                 visual2 = visual
                 if random.random() < 0.5:
-                    visuals = torch.stack([visual1, visual2], dim = 0)
+                    visuals = torch.stack([visual1, visual2], dim=0)
                     description = f'An object in image one with background in image two is moving {motion}'
                 else:
-                    visuals = torch.stack([visual2, visual1], dim = 0)
+                    visuals = torch.stack([visual2, visual1], dim=0)
                     description = f'An object in image two with background in image one is moving {motion}'
             elif self.attr_mode == 'same_object+same_background':
                 idx = random.randint(0, image_tensor.shape[0] - 1)
-                visual2 = Image.open(os.path.join(self.root, self.videos[key][idx]))
+                visual2 = Image.open(
+                    os.path.join(self.root, self.videos[key][idx]))
                 visual2 = self.image_transform(to_tensor(visual2))
-                visuals = torch.stack([visual, visual2], dim = 0)
+                visuals = torch.stack([visual, visual2], dim=0)
                 description = f'An object in image one with background in image two is moving {motion}'
             elif self.attr_mode == 'color+shape+background+rand':
                 key_color = choice(self.attr_dict['color'][color])
                 key_shape = choice(self.attr_dict['shape'][shape])
                 idx = random.randint(0, image_tensor.shape[0] - 1)
-                visual1 = Image.open(os.path.join(self.root, self.videos[key_color][idx]))
+                visual1 = Image.open(
+                    os.path.join(self.root, self.videos[key_color][idx]))
                 visual1 = self.image_transform(to_tensor(visual1))
-                visual2 = Image.open(os.path.join(self.root, self.videos[key_shape][idx]))
+                visual2 = Image.open(
+                    os.path.join(self.root, self.videos[key_shape][idx]))
                 visual2 = self.image_transform(to_tensor(visual2))
                 visual3 = visual
                 if random.random() < 0.5:
                     visual_order = 123
-                    visuals = torch.stack([visual1, visual2, visual3], dim = 0)
+                    visuals = torch.stack([visual1, visual2, visual3], dim=0)
                     if random.random() < 0.5:
                         description = f'An object with color in image one, shape in image two, background in image three is moving {motion}'
                         description_ = f'An object with color in image two, shape in image one, background in image three is moving {motion}'
@@ -1680,7 +1806,7 @@ class ShapeAttrDataset(Dataset):
                         description_ = f'An object with shape in image one, color in image two, background in image three is moving {motion}'
                 else:
                     visual_order = 213
-                    visuals = torch.stack([visual2, visual1, visual3], dim = 0)
+                    visuals = torch.stack([visual2, visual1, visual3], dim=0)
                     if random.random() < 0.5:
                         description = f'An object with shape in image one, color in image two, background in image three is moving {motion}'
                         description_ = f'An object with shape in image two, color in image one, background in image three is moving {motion}'
@@ -1689,38 +1815,60 @@ class ShapeAttrDataset(Dataset):
                         description_ = f'An object with color in image one, shape in image two, background in image three is moving {motion}'
                 if self.return_neg:
                     idx = random.randint(0, image_tensor.shape[0] - 1)
-                    color_ = choice(list(set(self.attr_dict['color'].keys())-set([color])))
+                    color_ = choice(
+                        list(
+                            set(self.attr_dict['color'].keys()) -
+                            set([color])))
                     # key_color_ = choice(self.attr_dict['color'][color_])
-                    key_color_ = choice(list(set(self.attr_dict['color'][color_])-set(self.attr_dict['shape'][shape])))
-                    shape_ = choice(list(set(self.attr_dict['shape'].keys())-set([shape])))
+                    key_color_ = choice(
+                        list(
+                            set(self.attr_dict['color'][color_]) -
+                            set(self.attr_dict['shape'][shape])))
+                    shape_ = choice(
+                        list(
+                            set(self.attr_dict['shape'].keys()) -
+                            set([shape])))
                     # key_shape_ = choice(self.attr_dict['shape'][shape_])
-                    key_shape_ = choice(list(set(self.attr_dict['shape'][shape_])-set(self.attr_dict['color'][color])))
-                    key_ = choice(list(set(self.keys)-set([key])))
-                    visual1_ = Image.open(os.path.join(self.root, self.videos[key_color_][idx]))
+                    key_shape_ = choice(
+                        list(
+                            set(self.attr_dict['shape'][shape_]) -
+                            set(self.attr_dict['color'][color])))
+                    key_ = choice(list(set(self.keys) - set([key])))
+                    visual1_ = Image.open(
+                        os.path.join(self.root, self.videos[key_color_][idx]))
                     visual1_ = self.image_transform(to_tensor(visual1_))
-                    visual2_ = Image.open(os.path.join(self.root, self.videos[key_shape_][idx]))
+                    visual2_ = Image.open(
+                        os.path.join(self.root, self.videos[key_shape_][idx]))
                     visual2_ = self.image_transform(to_tensor(visual2_))
-                    visual3_ = Image.open(os.path.join(self.root, self.videos[key_][idx]).replace('video/', 'visual/'))
+                    visual3_ = Image.open(
+                        os.path.join(self.root,
+                                     self.videos[key_][idx]).replace(
+                                         'video/', 'visual/'))
                     visual3_ = self.image_transform(to_tensor(visual3_))
                     if visual_order == 123:
-                        visuals_ = torch.stack([visual1_, visual2_, visual3_], dim = 0)
+                        visuals_ = torch.stack([visual1_, visual2_, visual3_],
+                                               dim=0)
                     elif visual_order == 213:
-                        visuals_ = torch.stack([visual2_, visual1_, visual3_], dim = 0)
+                        visuals_ = torch.stack([visual2_, visual1_, visual3_],
+                                               dim=0)
                     tokenized_text_ = self.tokenizer.tokenize(
                         description_,
                         self.text_len,
                         truncate_text=self.truncate_captions,
-                    ).squeeze(0) if self.tokenizer is not None else description_
+                    ).squeeze(
+                        0) if self.tokenizer is not None else description_
             elif self.attr_mode == 'color+shape+background':
                 key_color = choice(self.attr_dict['color'][color])
                 key_shape = choice(self.attr_dict['shape'][shape])
                 idx = random.randint(0, image_tensor.shape[0] - 1)
-                visual1 = Image.open(os.path.join(self.root, self.videos[key_color][idx]))
+                visual1 = Image.open(
+                    os.path.join(self.root, self.videos[key_color][idx]))
                 visual1 = self.image_transform(to_tensor(visual1))
-                visual2 = Image.open(os.path.join(self.root, self.videos[key_shape][idx]))
+                visual2 = Image.open(
+                    os.path.join(self.root, self.videos[key_shape][idx]))
                 visual2 = self.image_transform(to_tensor(visual2))
                 visual3 = visual
-                visuals = torch.stack([visual1, visual2, visual3], dim = 0)
+                visuals = torch.stack([visual1, visual2, visual3], dim=0)
             else:
                 raise NotImplementedError
 

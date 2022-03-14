@@ -5,7 +5,9 @@ import torch
 
 from .distributed_backend import DistributedBackend
 import pdb
+
 st = pdb.set_trace
+
 
 class DeepSpeedBackend(DistributedBackend):
     """Distributed backend using the DeepSpeed engine."""
@@ -18,10 +20,8 @@ class DeepSpeedBackend(DistributedBackend):
             parser.add_argument(
                 '--deepspeed',
                 type=lambda _: False,
-                help=(
-                    'whether to use DeepSpeed '
-                    "(ignored since it's not available)"
-                ),
+                help=('whether to use DeepSpeed '
+                      "(ignored since it's not available)"),
             )
         else:
             parser = self.backend_module.add_config_arguments(parser)
@@ -69,8 +69,8 @@ class DeepSpeedBackend(DistributedBackend):
         after checking the values passed to `distribute`.
         """
         self._check_argvs(args, optimizer, lr_scheduler, kwargs)
-        (optimizer, lr_scheduler) = self._check_config(
-            args, optimizer, lr_scheduler, kwargs)
+        (optimizer, lr_scheduler) = self._check_config(args, optimizer,
+                                                       lr_scheduler, kwargs)
         return (optimizer, lr_scheduler)
 
     def _check_argvs(self, args, optimizer, lr_scheduler, kwargs):
@@ -82,26 +82,21 @@ class DeepSpeedBackend(DistributedBackend):
         has_dict_config = 'config_params' in kwargs
         if (
                 # No config given
-                (not has_json_config and not has_dict_config)
+            (not has_json_config and not has_dict_config)
                 # JSON config file does not exist
                 or (not has_dict_config
-                    and not os.path.isfile(args.deepspeed_config))
-        ):
+                    and not os.path.isfile(args.deepspeed_config))):
             # Let DeepSpeed handle these argument errors.
             return
 
         if not args.deepspeed:
-            print(
-                'WARNING: DeepSpeed backend was selected; setting '
-                '`args.deepspeed = True`'
-            )
+            print('WARNING: DeepSpeed backend was selected; setting '
+                  '`args.deepspeed = True`')
             args.deepspeed = True
 
         if has_json_config and has_dict_config:
-            print(
-                'WARNING: DeepSpeed config was given as both JSON file and '
-                'Python dictionary. Python dictionary takes precedence.'
-            )
+            print('WARNING: DeepSpeed config was given as both JSON file and '
+                  'Python dictionary. Python dictionary takes precedence.')
 
     def _check_config(self, args, optimizer, lr_scheduler, kwargs):
         """Return an appropriate optimizer and learning rate scheduler
@@ -117,16 +112,13 @@ class DeepSpeedBackend(DistributedBackend):
             print(
                 'WARNING: Optimizer encountered in both DeepSpeed config and '
                 'keyword arguments. Optimizer in DeepSpeed config '
-                'takes precedence.'
-            )
+                'takes precedence.')
             optimizer = None
 
         if 'scheduler' in config and lr_scheduler is not None:
-            print(
-                'WARNING: Learning rate scheduler encountered in both '
-                'DeepSpeed config and keyword arguments. Learning rate '
-                'scheduler in DeepSpeed config takes precedence.'
-            )
+            print('WARNING: Learning rate scheduler encountered in both '
+                  'DeepSpeed config and keyword arguments. Learning rate '
+                  'scheduler in DeepSpeed config takes precedence.')
             # For the LR scheduler, the JSON config already has
             # precedence. We do this for forward compatibility.
             lr_scheduler = None
@@ -134,14 +126,14 @@ class DeepSpeedBackend(DistributedBackend):
         return (optimizer, lr_scheduler)
 
     def _distribute(
-            self,
-            args=None,
-            model=None,
-            optimizer=None,
-            model_parameters=None,
-            training_data=None,
-            lr_scheduler=None,
-            **kwargs,
+        self,
+        args=None,
+        model=None,
+        optimizer=None,
+        model_parameters=None,
+        training_data=None,
+        lr_scheduler=None,
+        **kwargs,
     ):
         """Return a distributed model engine, optimizer, dataloader, and
         learning rate scheduler. These are obtained by wrapping the
@@ -150,8 +142,8 @@ class DeepSpeedBackend(DistributedBackend):
         For the other or other possible arguments,
         see `deepspeed.initialize`.
         """
-        (optimizer, lr_scheduler) = self._check_args(
-            args, optimizer, lr_scheduler, kwargs)
+        (optimizer, lr_scheduler) = self._check_args(args, optimizer,
+                                                     lr_scheduler, kwargs)
 
         return self.backend_module.initialize(
             args=args,

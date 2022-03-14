@@ -21,7 +21,7 @@ import tensorflow as tf
 
 
 def preprocess_for_inception(images):
-  """Preprocess images for inception.
+    """Preprocess images for inception.
 
   Args:
     images: images minibatch. Shape [batch size, width, height,
@@ -31,28 +31,27 @@ def preprocess_for_inception(images):
     preprocessed_images
   """
 
-  # Images should have 3 channels.
-  assert images.shape[3].value == 3
+    # Images should have 3 channels.
+    assert images.shape[3].value == 3
 
-  # tf.contrib.gan.eval.preprocess_image function takes values in [0, 255]
-  with tf.control_dependencies([tf.assert_greater_equal(images, 0.0),
-                                tf.assert_less_equal(images, 255.0)]):
-    images = tf.identity(images)
+    # tf.contrib.gan.eval.preprocess_image function takes values in [0, 255]
+    with tf.control_dependencies([
+            tf.assert_greater_equal(images, 0.0),
+            tf.assert_less_equal(images, 255.0)
+    ]):
+        images = tf.identity(images)
 
-  preprocessed_images = tf.map_fn(
-      fn=tf.contrib.gan.eval.preprocess_image,
-      elems=images,
-      back_prop=False
-  )
+    preprocessed_images = tf.map_fn(fn=tf.contrib.gan.eval.preprocess_image,
+                                    elems=images,
+                                    back_prop=False)
 
-  return preprocessed_images
+    return preprocessed_images
 
 
 def get_inception_features(inputs, inception_graph, layer_name):
-  """Compose the preprocess_for_inception function with TFGAN run_inception."""
+    """Compose the preprocess_for_inception function with TFGAN run_inception."""
 
-  preprocessed = preprocess_for_inception(inputs)
-  return tf.contrib.gan.eval.run_inception(
-      preprocessed,
-      graph_def=inception_graph,
-      output_tensor=layer_name)
+    preprocessed = preprocess_for_inception(inputs)
+    return tf.contrib.gan.eval.run_inception(preprocessed,
+                                             graph_def=inception_graph,
+                                             output_tensor=layer_name)

@@ -36,20 +36,20 @@ class HorovodBackend(DistributedBackend):
         self.backend_module.join()
 
     def _distribute(
-            self,
-            _args=None,
-            model=None,
-            optimizer=None,
-            _model_parameters=None,
-            training_data=None,
-            lr_scheduler=None,
-            **_kwargs,
+        self,
+        _args=None,
+        model=None,
+        optimizer=None,
+        _model_parameters=None,
+        training_data=None,
+        lr_scheduler=None,
+        **_kwargs,
     ):
         optimizer = self.backend_module.DistributedOptimizer(optimizer)
-        self.backend_module.broadcast_parameters(
-            model.state_dict(), root_rank=self.ROOT_RANK)
-        self.backend_module.broadcast_optimizer_state(
-            optimizer, root_rank=self.ROOT_RANK)
+        self.backend_module.broadcast_parameters(model.state_dict(),
+                                                 root_rank=self.ROOT_RANK)
+        self.backend_module.broadcast_optimizer_state(optimizer,
+                                                      root_rank=self.ROOT_RANK)
         return (model, optimizer, training_data, lr_scheduler)
 
     def _average_all(self, tensor):

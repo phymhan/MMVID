@@ -65,8 +65,7 @@ def set_backend_from_args(args):
             if not backend.has_backend():
                 raise ModuleNotFoundError(
                     f'{backend.BACKEND_NAME} backend selected but '
-                    'module not available'
-                )
+                    'module not available')
 
             print(f'Using {backend.BACKEND_NAME} for distributed execution')
             is_distributed = True

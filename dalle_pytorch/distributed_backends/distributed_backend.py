@@ -38,7 +38,6 @@ class DistributedBackend:
     """The module to access the backend."""
     is_initialized = False
     """Whether the backend is initialized."""
-
     def __init__(self):
         if self.BACKEND_MODULE_NAME is None:
             raise NotImplementedError('BACKEND_MODULE_NAME is not set')
@@ -128,14 +127,14 @@ class DistributedBackend:
         raise NotImplementedError
 
     def distribute(
-            self,
-            args=None,
-            model=None,
-            optimizer=None,
-            model_parameters=None,
-            training_data=None,
-            lr_scheduler=None,
-            **kwargs,
+        self,
+        args=None,
+        model=None,
+        optimizer=None,
+        model_parameters=None,
+        training_data=None,
+        lr_scheduler=None,
+        **kwargs,
     ):
         """Return a distributed model engine, optimizer, dataloader, and
         learning rate scheduler. These are obtained by wrapping the
@@ -153,14 +152,14 @@ class DistributedBackend:
         )
 
     def _distribute(
-            self,
-            args=None,
-            model=None,
-            optimizer=None,
-            model_parameters=None,
-            training_data=None,
-            lr_scheduler=None,
-            **kwargs,
+        self,
+        args=None,
+        model=None,
+        optimizer=None,
+        model_parameters=None,
+        training_data=None,
+        lr_scheduler=None,
+        **kwargs,
     ):
         """Return a distributed model engine, optimizer, dataloader, and
         learning rate scheduler. These are obtained by wrapping the

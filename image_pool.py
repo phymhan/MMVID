@@ -10,7 +10,6 @@ class ImagePool():
     This buffer enables us to update discriminators using a history of generated images
     rather than the ones produced by the latest generators.
     """
-
     def __init__(self, pool_size, p=1):
         """Initialize the ImagePool class
         Parameters:
@@ -21,7 +20,7 @@ class ImagePool():
         if self.pool_size > 0:  # create an empty pool
             self.num_imgs = 0
             self.images = []
-    
+
     def __len__(self):
         return self.num_imgs
 
@@ -40,18 +39,20 @@ class ImagePool():
         return_images = []
         for image in images:
             image = torch.unsqueeze(image.data, 0)
-            if self.num_imgs < self.pool_size:   # if the buffer is not full; keep inserting current images to the buffer
+            if self.num_imgs < self.pool_size:  # if the buffer is not full; keep inserting current images to the buffer
                 self.num_imgs = self.num_imgs + 1
                 self.images.append(image)
                 return_images.append(image)
             else:
                 p = random.uniform(0, 1)
                 if p < self.p:  # by self.p chance, the buffer will return a previously stored image, and insert the current image into the buffer
-                    random_id = random.randint(0, self.pool_size - 1)  # randint is inclusive
+                    random_id = random.randint(0, self.pool_size -
+                                               1)  # randint is inclusive
                     tmp = self.images[random_id]
                     self.images[random_id] = image.clone()
                     return_images.append(tmp)
                 else:  # by (1 - self.p) chance, the buffer will return the current image
                     return_images.append(image)
-        return_images = torch.cat(return_images, 0)   # collect all the images and return
+        return_images = torch.cat(return_images,
+                                  0)  # collect all the images and return
         return return_images

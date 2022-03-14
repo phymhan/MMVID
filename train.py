@@ -12,6 +12,7 @@ import imageio
 import natsort
 from tqdm import tqdm
 import pdb
+
 st = pdb.set_trace
 
 import torch
@@ -27,18 +28,21 @@ import torchvision
 import utils
 import utils_html
 
-
 # helpers
+
 
 def exists(val):
     return val is not None
 
+
 def get_trainable_params(model):
     return [params for params in model.parameters() if params.requires_grad]
+
 
 def set_requires_grad(model, value):
     for param in model.parameters():
         param.requires_grad = value
+
 
 def group_weight(model):
     group_decay, group_no_decay = [], []
@@ -49,9 +53,14 @@ def group_weight(model):
                 continue
         group_decay.append(params[1])
 
-    assert len(list(model.parameters())) == len(group_decay) + len(group_no_decay)
-    groups = [dict(params=group_decay), dict(params=group_no_decay, weight_decay=.0)]
+    assert len(list(
+        model.parameters())) == len(group_decay) + len(group_no_decay)
+    groups = [
+        dict(params=group_decay),
+        dict(params=group_no_decay, weight_decay=.0)
+    ]
     return groups
+
 
 def sample_data(loader, sampler=None):
     epoch = -1
@@ -62,17 +71,17 @@ def sample_data(loader, sampler=None):
         for batch in loader:
             yield batch
 
+
 def requires_grad(model, flag=True):
     for p in model.parameters():
         p.requires_grad = flag
+
 
 def model_to_gpu(model, gpu, is_train):
     if is_train:
         if gpu is not None:
             model.cuda(gpu)
-            model = DDP(model,
-                        device_ids=[gpu],
-                        find_unused_parameters=True)
+            model = DDP(model, device_ids=[gpu], find_unused_parameters=True)
         else:
             model.cuda()
             model = DDP(model, find_unused_parameters=True)
@@ -82,12 +91,19 @@ def model_to_gpu(model, gpu, is_train):
 
     return model
 
+
 def cleanup():
     dist.destroy_process_group()
 
+
 # reconstitute vae and dalle params
 
-def get_vae_model(which_vae, vae_params=None, vae_path=None, image_size=None, args=None):
+
+def get_vae_model(which_vae,
+                  vae_params=None,
+                  vae_path=None,
+                  image_size=None,
+                  args=None):
     # if vae_params is given (not None), RESUMING from custom DiscreteVAE(**vae_params)
     # weight loading is handled in dalle model
     if args.dalle_path:
@@ -105,16 +121,19 @@ def get_vae_model(which_vae, vae_params=None, vae_path=None, image_size=None, ar
         from dalle_pytorch.vae import DiscreteVAE
         if exists(vae_path) and Path(vae_path).exists():
             loaded_obj = torch.load(str(vae_path))
-            vae_params, vae_weights = loaded_obj['hparams'], loaded_obj['weights']
+            vae_params, vae_weights = loaded_obj['hparams'], loaded_obj[
+                'weights']
             vae = DiscreteVAE(**vae_params)
             vae.load_state_dict(vae_weights)
         elif exists(vae_params):
             vae = DiscreteVAE(**vae_params)
         else:
-            raise RuntimeError("At least one of vae_path and vae_params should exist.")
+            raise RuntimeError(
+                "At least one of vae_path and vae_params should exist.")
     else:
         raise NotImplementedError
     return vae, vae_params
+
 
 def get_dalle(args, vae, dalle_params):
     dalle = BERT(vae=vae, **dalle_params)
@@ -124,17 +143,24 @@ def get_dalle(args, vae, dalle_params):
 
     return dalle
 
+
 def get_optimizer(args, params):
     if args.optimizer == 'adam':
         from torch.optim import Adam
-        opt = Adam(params, lr=args.learning_rate, weight_decay=args.weight_decay)
+        opt = Adam(params,
+                   lr=args.learning_rate,
+                   weight_decay=args.weight_decay)
     elif args.optimizer == 'adamw':
         from torch.optim import AdamW
         # vqgan uses betas (0.9, 0.95)
-        opt = AdamW(params, lr=args.learning_rate, betas=(0.9, 0.95), weight_decay=args.weight_decay)
+        opt = AdamW(params,
+                    lr=args.learning_rate,
+                    betas=(0.9, 0.95),
+                    weight_decay=args.weight_decay)
     else:
         raise NotImplementedError
     return opt
+
 
 def get_tokenizer(args):
     if args.which_tokenizer == 'yttm':
@@ -152,6 +178,7 @@ def get_tokenizer(args):
     else:
         raise NotImplementedError
     return tokenizer
+
 
 def get_dataset(args, tokenizer):
     args.truncate_captions = True
@@ -284,10 +311,15 @@ def get_dataset(args, tokenizer):
         raise NotImplementedError
     return ds
 
+
 def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+    token_embeddings = model_output[
+        0]  #First element of model_output contains all token embeddings
+    input_mask_expanded = attention_mask.unsqueeze(-1).expand(
+        token_embeddings.size()).float()
+    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
+        input_mask_expanded.sum(1), min=1e-9)
+
 
 def get_fixed_language_model(args):
     tokenizer2, language_model = None, None
@@ -315,7 +347,7 @@ def get_fixed_language_model(args):
             output = language_model(**encoded_input)
             embeddings = mean_pooling(output, encoded_input['attention_mask'])
             return embeddings
-    
+
     elif args.fixed_language_model == 'twitter-xlm-roberta-base':
         from transformers import AutoTokenizer, AutoModel, AutoConfig
         MODEL = "cardiffnlp/twitter-xlm-roberta-base"
@@ -340,19 +372,22 @@ def get_fixed_language_model(args):
             output = language_model(**encoded_input)
             embeddings = mean_pooling(output, encoded_input['attention_mask'])
             return embeddings
-    
+
     else:
         raise NotImplementedError
 
     return tokenizer2, language_model, text_feature_dim, encode_text
+
 
 def get_text_feature_extractor(args):
     text_feature_dim = 0
     text_feature_extractor = None
     if args.pretrained_text_feature == 'roberta':
         from transformers import RobertaTokenizer, RobertaModel
-        text_feature_tokenizer = RobertaTokenizer.from_pretrained('roberta-large')
-        text_feature_extractor = RobertaModel.from_pretrained('roberta-large').cuda()
+        text_feature_tokenizer = RobertaTokenizer.from_pretrained(
+            'roberta-large')
+        text_feature_extractor = RobertaModel.from_pretrained(
+            'roberta-large').cuda()
         text_feature_dim = 1024
 
         @torch.no_grad()
@@ -360,17 +395,20 @@ def get_text_feature_extractor(args):
             batch_size = len(descriptions)
             feature = []
             for b in range(batch_size):
-                encoded_input = text_feature_tokenizer(descriptions[b], return_tensors='pt')
+                encoded_input = text_feature_tokenizer(descriptions[b],
+                                                       return_tensors='pt')
                 encoded_input = {
                     'input_ids': encoded_input['input_ids'].to(device),
-                    'attention_mask': encoded_input['attention_mask'].to(device),
+                    'attention_mask':
+                    encoded_input['attention_mask'].to(device),
                 }
                 output = text_feature_extractor(**encoded_input)
                 feature.append(output.last_hidden_state.squeeze(0))
             return feature
 
     elif args.pretrained_text_feature == 'openai_clip':
-        text_feature_extractor = torch.jit.load("pretrained/ViT-B-32.pt").cuda().eval()
+        text_feature_extractor = torch.jit.load(
+            "pretrained/ViT-B-32.pt").cuda().eval()
         text_feature_tokenizer = SimpleTokenizer()
         text_feature_dim = 512
         context_length = text_feature_extractor.context_length
@@ -383,7 +421,8 @@ def get_text_feature_extractor(args):
                 context_length,
                 truncate_text=True,
             ).squeeze(0).cuda()
-            x = text_feature_extractor.token_embedding(text_input).type(dtype)  # [batch_size, n_ctx, d_model]
+            x = text_feature_extractor.token_embedding(text_input).type(
+                dtype)  # [batch_size, n_ctx, d_model]
             x = x + text_feature_extractor.positional_embedding.type(dtype)
             x = x.permute(1, 0, 2)  # NLD -> LND
             x = text_feature_extractor.transformer(x)
@@ -396,6 +435,7 @@ def get_text_feature_extractor(args):
 
     return text_feature_dim, encode_text
 
+
 def clip_encode_image(model, image):
     device = image.device
     # module = model.module
@@ -404,15 +444,19 @@ def clip_encode_image(model, image):
         image = F.interpolate(image, (input_resolution, input_resolution))
     image_mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).to(device)
     image_std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).to(device)
-    image_input = (image - image_mean[:, None, None]) / image_std[:, None, None]
+    image_input = (image - image_mean[:, None, None]) / image_std[:, None,
+                                                                  None]
     image_features = model.encode_image(image_input).float()
     image_features /= image_features.norm(dim=-1, keepdim=True)
     return image_features
 
+
 # lr scheduler
+
 
 def dummy_lr_scheduler_step(*args):
     pass
+
 
 def prepare_lr_scheduler(args, optimizer):
     if args.lr_scheduler == 'reducelronplateau':
@@ -452,12 +496,12 @@ def prepare_lr_scheduler(args, optimizer):
             T_max=args.lr_scheduler_step_size,
             eta_min=1e-6,
         )
-        
+
         def step(*args):
             scheduler.step()
 
         return scheduler, step
-    
+
     elif args.lr_scheduler == 'warmupdecaylr':
         from deepspeed.runtime.lr_schedules import WarmupDecayLR
         scheduler = WarmupDecayLR(
@@ -470,9 +514,9 @@ def prepare_lr_scheduler(args, optimizer):
 
         def step(*args):
             scheduler.step()
-        
+
         return scheduler, step
-    
+
     elif args.lr_scheduler == 'warmuplr':
         from deepspeed.runtime.lr_schedules import WarmupLR
         scheduler = WarmupLR(
@@ -484,11 +528,12 @@ def prepare_lr_scheduler(args, optimizer):
 
         def step(*args):
             scheduler.step()
-        
+
         return scheduler, step
 
     else:
         raise NotImplementedError
+
 
 def save_model(save_dir, params={}, states={}, name='dalle.pt'):
     path = save_dir / name  # string specifies which epoch or iter
@@ -499,14 +544,23 @@ def save_model(save_dir, params={}, states={}, name='dalle.pt'):
     os.makedirs(path.parent, exist_ok=True)
     torch.save(save_obj, path)
 
+
 def reduce_loss(loss):  # TODO
     return loss
 
+
 @torch.no_grad()
-def visualize(args, dalle_module, tokenizer, data_batch, which_iter, webpage=None):
-    text_description, text, frames, visuals = data_batch['description'], data_batch['text'], data_batch['target'], data_batch['visual']
+def visualize(args,
+              dalle_module,
+              tokenizer,
+              data_batch,
+              which_iter,
+              webpage=None):
+    text_description, text, frames, visuals = data_batch[
+        'description'], data_batch['text'], data_batch['target'], data_batch[
+            'visual']
     if isinstance(visuals, (list, tuple)):
-        visuals = torch.stack(visuals, dim = 1)
+        visuals = torch.stack(visuals, dim=1)
 
     N_SAMPLE = min(args.n_sample, args.batch_size)
     N_PER_SAMPLE = args.n_per_sample
@@ -527,8 +581,9 @@ def visualize(args, dalle_module, tokenizer, data_batch, which_iter, webpage=Non
     else:
         generate_images = dalle_module.generate_images
     pnag_suffix = '_argmax' if args.pnag_argmax else ''
-    pnag_suffix = pnag_suffix+'_dynamic' if args.pnag_dynamic else pnag_suffix
-    blank_frame_nvc = torch.ones(N_PER_SAMPLE, N_VISUAL, 3, args.image_size, args.image_size).cuda()
+    pnag_suffix = pnag_suffix + '_dynamic' if args.pnag_dynamic else pnag_suffix
+    blank_frame_nvc = torch.ones(N_PER_SAMPLE, N_VISUAL, 3, args.image_size,
+                                 args.image_size).cuda()
     blank_frame_1 = torch.ones(1, 3, args.image_size, args.image_size).cuda()
 
     samples_img = []
@@ -539,74 +594,113 @@ def visualize(args, dalle_module, tokenizer, data_batch, which_iter, webpage=Non
         nrow_web = []
     for j in range(N_SAMPLE):
         if args.fixed_language_model is None:
-            sample_text = text[j:j+1]
+            sample_text = text[j:j + 1]
             token_list = sample_text.masked_select(sample_text != 0).tolist()
             decoded_text = tokenizer.decode(token_list)
             if isinstance(decoded_text, (list, tuple)):
                 decoded_text = decoded_text[0]
-            text_repeat = text[j:j+1].repeat(N_PER_SAMPLE, 1)
+            text_repeat = text[j:j + 1].repeat(N_PER_SAMPLE, 1)
         else:
             decoded_text = text_description[j]
-            text_repeat = text[j:j+1].repeat(N_PER_SAMPLE, 1)
+            text_repeat = text[j:j + 1].repeat(N_PER_SAMPLE, 1)
 
         # Sample (with visual)
         face_mode = None
-        frames_recon = dalle_module.recon_images(frames[j:j+1,:N_FRAME,...])
-        visual = visuals[j:j+1,...].repeat(N_PER_SAMPLE, 1, 1, 1, 1) if args.visual else None
+        frames_recon = dalle_module.recon_images(frames[j:j + 1, :N_FRAME,
+                                                        ...])
+        visual = visuals[j:j + 1, ...].repeat(N_PER_SAMPLE, 1, 1, 1,
+                                              1) if args.visual else None
         if args.visual:
-            visual_real = visuals[j,...]
-            visual_recon = dalle_module.recon_images(visual_real, which_vae=which_cvae)
-            samples_img.append(torch.cat((visual_real, frames[j,:N_FRAME,...]), 0))  # real video sequence
+            visual_real = visuals[j, ...]
+            visual_recon = dalle_module.recon_images(visual_real,
+                                                     which_vae=which_cvae)
+            samples_img.append(
+                torch.cat((visual_real, frames[j, :N_FRAME, ...]),
+                          0))  # real video sequence
             samples_img.append(torch.cat((visual_recon, frames_recon), 0))
-            visual_prompt = visuals[j:j+1,...].clone().repeat(N_PER_SAMPLE, 1, 1, 1, 1)  # b n c h w
+            visual_prompt = visuals[j:j + 1, ...].clone().repeat(
+                N_PER_SAMPLE, 1, 1, 1, 1)  # b n c h w
             if args.rand_visual:
-                visual_prompt[:,:,:,IMAGE_SIZE//2:,:] = 1
+                visual_prompt[:, :, :, IMAGE_SIZE // 2:, :] = 1
             if args.vc_mode == 'face_8x8':
                 block_size = 16
                 visual_prompt_ = torch.ones_like(visual_prompt)
                 if random.random() < 0.5:
                     face_mode = 'eyes_nose'
-                    visual_prompt_[:,:,:,2*block_size:5*block_size,1*block_size:7*block_size] = visual_prompt[:,:,:,2*block_size:5*block_size,1*block_size:7*block_size]
+                    visual_prompt_[:, :, :, 2 * block_size:5 * block_size,
+                                   1 * block_size:7 *
+                                   block_size] = visual_prompt[:, :, :, 2 *
+                                                               block_size:5 *
+                                                               block_size, 1 *
+                                                               block_size:7 *
+                                                               block_size]
                 else:
                     face_mode = 'mouth'
-                    visual_prompt_[:,:,:,5*block_size:7*block_size,2*block_size:6*block_size] = visual_prompt[:,:,:,5*block_size:7*block_size,2*block_size:6*block_size]
+                    visual_prompt_[:, :, :, 5 * block_size:7 * block_size,
+                                   2 * block_size:6 *
+                                   block_size] = visual_prompt[:, :, :, 5 *
+                                                               block_size:7 *
+                                                               block_size, 2 *
+                                                               block_size:6 *
+                                                               block_size]
                 visual_prompt = visual_prompt_
             elif args.vc_mode == 'face2_8x8':
                 block_size = 16
                 visual_prompt_ = torch.ones_like(visual_prompt)
-                visual_prompt_[:,0,...] = visual_prompt[:,0,...]
+                visual_prompt_[:, 0, ...] = visual_prompt[:, 0, ...]
                 face_mode = 'face2'
-                visual_prompt_[:,1:,:,2*block_size:6*block_size,2*block_size:6*block_size] = visual_prompt[:,1:,:,2*block_size:6*block_size,2*block_size:6*block_size]
+                visual_prompt_[:, 1:, :, 2 * block_size:6 * block_size,
+                               2 * block_size:6 *
+                               block_size] = visual_prompt[:, 1:, :,
+                                                           2 * block_size:6 *
+                                                           block_size,
+                                                           2 * block_size:6 *
+                                                           block_size]
                 visual_prompt = visual_prompt_
             elif args.vc_mode == 'mask2_8x8':
                 block_size = 16
                 visual_prompt_ = torch.ones_like(visual_prompt)
-                visual_prompt_[:,:,:,1*block_size:7*block_size,1*block_size:7*block_size] = visual_prompt[:,:,:,1*block_size:7*block_size,1*block_size:7*block_size]
+                visual_prompt_[:, :, :, 1 * block_size:7 * block_size,
+                               1 * block_size:7 *
+                               block_size] = visual_prompt[:, :, :,
+                                                           1 * block_size:7 *
+                                                           block_size,
+                                                           1 * block_size:7 *
+                                                           block_size]
                 visual_prompt = visual_prompt_
                 face_mode = 'mask2'
             elif args.vc_mode == 'mask_8x8':
                 block_size = 16
                 visual_prompt_ = torch.ones_like(visual_prompt)
-                visual_prompt_[:,:,:,1*block_size:7*block_size,1*block_size:7*block_size] = visual_prompt[:,:,:,1*block_size:7*block_size,1*block_size:7*block_size]
+                visual_prompt_[:, :, :, 1 * block_size:7 * block_size,
+                               1 * block_size:7 *
+                               block_size] = visual_prompt[:, :, :,
+                                                           1 * block_size:7 *
+                                                           block_size,
+                                                           1 * block_size:7 *
+                                                           block_size]
                 visual_prompt = visual_prompt_
                 face_mode = 'mask'
             elif args.vc_mode == 'shape_4x4':
                 block_size = 16
-                visual_prompt[:,:,:,1*block_size:3*block_size,1*block_size:3*block_size] = 1
+                visual_prompt[:, :, :, 1 * block_size:3 * block_size,
+                              1 * block_size:3 * block_size] = 1
                 face_mode = 'shape'
         else:
-            samples_img.append(frames[j,:N_FRAME,...])  # real video sequence
+            samples_img.append(frames[j, :N_FRAME, ...])  # real video sequence
             samples_img.append(frames_recon)
         captions_img.append(f'{j+1}. {decoded_text}')
         if args.use_html:
             nrow_web += [0]
             if args.visual:
-                samples_web += list(torch.split(visual_real, 1, dim = 0))
-                samples_web += list(torch.split(visual_recon, 1, dim = 0))
+                samples_web += list(torch.split(visual_real, 1, dim=0))
+                samples_web += list(torch.split(visual_recon, 1, dim=0))
                 captions_web += [f'vc_{jj+1} [real]' for jj in range(N_VISUAL)]
-                captions_web += [f'vc_{jj+1} [recon]' for jj in range(N_VISUAL)]
+                captions_web += [
+                    f'vc_{jj+1} [recon]' for jj in range(N_VISUAL)
+                ]
                 nrow_web[-1] += 2 * N_VISUAL
-            samples_web.append(frames[j,:N_FRAME,...])
+            samples_web.append(frames[j, :N_FRAME, ...])
             samples_web.append(frames_recon)
             captions_web += [decoded_text]
             captions_web += ['sequence [recon]']
@@ -627,84 +721,139 @@ def visualize(args, dalle_module, tokenizer, data_batch, which_iter, webpage=Non
                 mp_config=args.mp_config,
             )
             if args.visual:
-                samples_img.append(torch.cat((visual_prompt, sample_vc), 1).reshape(N_PER_SAMPLE*N_FRAME_, *frames.shape[2:5]))
+                samples_img.append(
+                    torch.cat((visual_prompt, sample_vc),
+                              1).reshape(N_PER_SAMPLE * N_FRAME_,
+                                         *frames.shape[2:5]))
             else:
-                samples_img.append(sample_vc.reshape(N_PER_SAMPLE*N_FRAME, *frames.shape[2:5]))
+                samples_img.append(
+                    sample_vc.reshape(N_PER_SAMPLE * N_FRAME,
+                                      *frames.shape[2:5]))
             if args.use_html:
                 nrow_web += [0]
                 if args.visual:
-                    samples_web += list(torch.split(visual_prompt[0,...], 1, dim = 0))
-                    captions_web += [f'vc_{jj+1} [prompt]' for jj in range(N_VISUAL)]
+                    samples_web += list(
+                        torch.split(visual_prompt[0, ...], 1, dim=0))
+                    captions_web += [
+                        f'vc_{jj+1} [prompt]' for jj in range(N_VISUAL)
+                    ]
                     nrow_web[-1] += N_VISUAL
-                samples_web += list(torch.split(sample_vc, 1, dim = 0))
-                captions_web += [f'sample {jj+1} [T={mp_steps}]' for jj in range(N_PER_SAMPLE)]
+                samples_web += list(torch.split(sample_vc, 1, dim=0))
+                captions_web += [
+                    f'sample {jj+1} [T={mp_steps}]'
+                    for jj in range(N_PER_SAMPLE)
+                ]
                 nrow_web[-1] += N_PER_SAMPLE
             if args.debug:
-                os.makedirs(LOG_SAMPLE_DIR / f'{which_iter}_pnag', exist_ok=True)
-                tmp.insert(0, frames[j,:N_FRAME,...])
+                os.makedirs(LOG_SAMPLE_DIR / f'{which_iter}_pnag',
+                            exist_ok=True)
+                tmp.insert(0, frames[j, :N_FRAME, ...])
                 tmp = torch.cat(tmp, 0)
                 torchvision.utils.save_image(
                     tmp,
-                    LOG_SAMPLE_DIR / f'{which_iter}_pnag' / f'{j:02d}{pnag_suffix}_T={mp_steps}.png',
+                    LOG_SAMPLE_DIR / f'{which_iter}_pnag' /
+                    f'{j:02d}{pnag_suffix}_T={mp_steps}.png',
                     nrow=N_FRAME,
                     normalize=True,
-                    range=(0, 1)
-                )
+                    range=(0, 1))
         mp_steps = args.mask_predict_steps1
 
         if args.visual:
-            j2 = (j+1) % frames.shape[0]
-            visual_prompt = visuals[j2:j2+1,...].clone().repeat(N_PER_SAMPLE, 1, 1, 1, 1)  # b n c h w
+            j2 = (j + 1) % frames.shape[0]
+            visual_prompt = visuals[j2:j2 + 1, ...].clone().repeat(
+                N_PER_SAMPLE, 1, 1, 1, 1)  # b n c h w
             if args.rand_visual:
-                visual_prompt[:,:,:,IMAGE_SIZE//2:,:] = 1
+                visual_prompt[:, :, :, IMAGE_SIZE // 2:, :] = 1
             if args.vc_mode == 'face_8x8':
                 block_size = 16
                 visual_prompt_ = torch.ones_like(visual_prompt)
                 if random.random() < 0.5:
                     face_mode = 'eyes_nose'
-                    visual_prompt_[:,:,:,2*block_size:5*block_size,1*block_size:7*block_size] = visual_prompt[:,:,:,2*block_size:5*block_size,1*block_size:7*block_size]
+                    visual_prompt_[:, :, :, 2 * block_size:5 * block_size,
+                                   1 * block_size:7 *
+                                   block_size] = visual_prompt[:, :, :, 2 *
+                                                               block_size:5 *
+                                                               block_size, 1 *
+                                                               block_size:7 *
+                                                               block_size]
                 else:
                     face_mode = 'mouth'
-                    visual_prompt_[:,:,:,5*block_size:7*block_size,2*block_size:6*block_size] = visual_prompt[:,:,:,5*block_size:7*block_size,2*block_size:6*block_size]
+                    visual_prompt_[:, :, :, 5 * block_size:7 * block_size,
+                                   2 * block_size:6 *
+                                   block_size] = visual_prompt[:, :, :, 5 *
+                                                               block_size:7 *
+                                                               block_size, 2 *
+                                                               block_size:6 *
+                                                               block_size]
                 visual_prompt = visual_prompt_
-                visual_cf = visuals[j2:j2+1,...]
+                visual_cf = visuals[j2:j2 + 1, ...]
                 visual_cf = visual_cf.repeat(N_PER_SAMPLE, 1, 1, 1, 1)
             elif args.vc_mode == 'face2_8x8':
                 block_size = 16
                 visual_prompt_ = torch.ones_like(visual_prompt)
-                visual_prompt_[:,0,...] = visual_prompt[:,0,...]
+                visual_prompt_[:, 0, ...] = visual_prompt[:, 0, ...]
                 face_mode = 'face2'
-                visual_prompt1 = visuals[j:j+1,...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
-                visual_prompt_[:,1:,:,2*block_size:6*block_size,2*block_size:6*block_size] = visual_prompt1[:,1:,:,2*block_size:6*block_size,2*block_size:6*block_size]
+                visual_prompt1 = visuals[j:j + 1,
+                                         ...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
+                visual_prompt_[:, 1:, :, 2 * block_size:6 * block_size,
+                               2 * block_size:6 *
+                               block_size] = visual_prompt1[:, 1:, :,
+                                                            2 * block_size:6 *
+                                                            block_size,
+                                                            2 * block_size:6 *
+                                                            block_size]
                 visual_prompt = visual_prompt_
-                visual_cf = visuals[j:j+1,...].clone()  # !!!
-                visual_cf[:,0,...] = visuals[j2:j2+1,0,...]
+                visual_cf = visuals[j:j + 1, ...].clone()  # !!!
+                visual_cf[:, 0, ...] = visuals[j2:j2 + 1, 0, ...]
                 visual_cf = visual_cf.repeat(N_PER_SAMPLE, 1, 1, 1, 1)
             elif args.vc_mode == 'mask2_8x8':
                 block_size = 16
                 visual_prompt_ = torch.ones_like(visual_prompt)
-                visual_prompt1 = visuals[j:j+1,...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
-                visual_prompt_[:,0,:,1*block_size:7*block_size,1*block_size:7*block_size] = visual_prompt1[:,0,:,1*block_size:7*block_size,1*block_size:7*block_size]
-                visual_prompt_[:,1,:,1*block_size:7*block_size,1*block_size:7*block_size] = visual_prompt[:,1,:,1*block_size:7*block_size,1*block_size:7*block_size]
+                visual_prompt1 = visuals[j:j + 1,
+                                         ...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
+                visual_prompt_[:, 0, :, 1 * block_size:7 * block_size,
+                               1 * block_size:7 *
+                               block_size] = visual_prompt1[:, 0, :,
+                                                            1 * block_size:7 *
+                                                            block_size,
+                                                            1 * block_size:7 *
+                                                            block_size]
+                visual_prompt_[:, 1, :, 1 * block_size:7 * block_size,
+                               1 * block_size:7 *
+                               block_size] = visual_prompt[:, 1, :,
+                                                           1 * block_size:7 *
+                                                           block_size,
+                                                           1 * block_size:7 *
+                                                           block_size]
                 visual_prompt = visual_prompt_
-                visual_cf = visuals[j:j+1,...].clone()  # !!!
-                visual_cf[:,1,...] = visuals[j2:j2+1,1,...]
+                visual_cf = visuals[j:j + 1, ...].clone()  # !!!
+                visual_cf[:, 1, ...] = visuals[j2:j2 + 1, 1, ...]
                 visual_cf = visual_cf.repeat(N_PER_SAMPLE, 1, 1, 1, 1)
                 face_mode = 'mask2'
             elif args.vc_mode == 'mask_8x8':
                 block_size = 16
                 visual_prompt_ = torch.ones_like(visual_prompt)
-                visual_prompt_[:,:,:,1*block_size:7*block_size,1*block_size:7*block_size] = visual_prompt[:,:,:,1*block_size:7*block_size,1*block_size:7*block_size]
+                visual_prompt_[:, :, :, 1 * block_size:7 * block_size,
+                               1 * block_size:7 *
+                               block_size] = visual_prompt[:, :, :,
+                                                           1 * block_size:7 *
+                                                           block_size,
+                                                           1 * block_size:7 *
+                                                           block_size]
                 visual_prompt = visual_prompt_
-                visual_cf = visuals[j2:j2+1,...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
+                visual_cf = visuals[j2:j2 + 1,
+                                    ...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
                 face_mode = 'mask'
             elif args.vc_mode == 'shape_4x4':
                 block_size = 16
-                visual_prompt[:,:,:,1*block_size:3*block_size,1*block_size:3*block_size] = 1
-                visual_cf = visuals[j2:j2+1,...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
+                visual_prompt[:, :, :, 1 * block_size:3 * block_size,
+                              1 * block_size:3 * block_size] = 1
+                visual_cf = visuals[j2:j2 + 1,
+                                    ...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
                 face_mode = 'shape'
             else:
-                visual_cf = visuals[j2:j2+1,...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
+                visual_cf = visuals[j2:j2 + 1,
+                                    ...].repeat(N_PER_SAMPLE, 1, 1, 1, 1)
             sample_cf, tmp, _ = generate_images(
                 text_repeat,
                 visual=visual_cf,
@@ -717,23 +866,31 @@ def visualize(args, dalle_module, tokenizer, data_batch, which_iter, webpage=Non
                 face_mode=face_mode,
                 mp_config=args.mp_config,
             )
-            samples_img.append(torch.cat((visual_prompt, sample_cf), 1).reshape(N_PER_SAMPLE*N_FRAME_, *frames.shape[2:5]))
+            samples_img.append(
+                torch.cat((visual_prompt, sample_cf),
+                          1).reshape(N_PER_SAMPLE * N_FRAME_,
+                                     *frames.shape[2:5]))
             if args.use_html:
-                samples_web += list(torch.split(visual_prompt[0,...], 1, dim = 0))
-                samples_web += list(torch.split(sample_cf, 1, dim = 0))
-                captions_web += [f'cf_{jj+1} [prompt]' for jj in range(N_VISUAL)]
-                captions_web += [f'sample {jj+1}' for jj in range(N_PER_SAMPLE)]
+                samples_web += list(
+                    torch.split(visual_prompt[0, ...], 1, dim=0))
+                samples_web += list(torch.split(sample_cf, 1, dim=0))
+                captions_web += [
+                    f'cf_{jj+1} [prompt]' for jj in range(N_VISUAL)
+                ]
+                captions_web += [
+                    f'sample {jj+1}' for jj in range(N_PER_SAMPLE)
+                ]
                 nrow_web += [N_VISUAL + N_PER_SAMPLE]
             if args.debug:
                 # tmp.insert(0, frames[j,:N_FRAME,...])
                 tmp = torch.cat(tmp, 0)
-                torchvision.utils.save_image(
-                    tmp,
-                    LOG_SAMPLE_DIR / f'{which_iter}_pnag' / f'cf_{j:02d}{pnag_suffix}.png',
-                    nrow=N_FRAME,
-                    normalize=True,
-                    range=(0, 1)
-                )
+                torchvision.utils.save_image(tmp,
+                                             LOG_SAMPLE_DIR /
+                                             f'{which_iter}_pnag' /
+                                             f'cf_{j:02d}{pnag_suffix}.png',
+                                             nrow=N_FRAME,
+                                             normalize=True,
+                                             range=(0, 1))
 
         if args.visual and not args.fullvc:
             sample_free, tmp, _ = generate_images(
@@ -746,32 +903,35 @@ def visualize(args, dalle_module, tokenizer, data_batch, which_iter, webpage=Non
                 mask_predict_steps=mp_steps,
                 mp_config=args.mp_config,
             )
-            samples_img.append(torch.cat((blank_frame_nvc, sample_free), 1).reshape(N_PER_SAMPLE*N_FRAME_, *frames.shape[2:5]))
+            samples_img.append(
+                torch.cat((blank_frame_nvc, sample_free),
+                          1).reshape(N_PER_SAMPLE * N_FRAME_,
+                                     *frames.shape[2:5]))
             if args.use_html:
                 samples_web += [blank_frame_1] * N_VISUAL
-                samples_web += list(torch.split(sample_free, 1, dim = 0))
+                samples_web += list(torch.split(sample_free, 1, dim=0))
                 captions_web += [f'null [prompt]' for jj in range(N_VISUAL)]
-                captions_web += [f'sample {jj+1}' for jj in range(N_PER_SAMPLE)]
+                captions_web += [
+                    f'sample {jj+1}' for jj in range(N_PER_SAMPLE)
+                ]
                 nrow_web += [N_VISUAL + N_PER_SAMPLE]
             if args.debug:
                 # tmp.insert(0, frames[j,:N_FRAME,...])
                 tmp = torch.cat(tmp, 0)
-                torchvision.utils.save_image(
-                    tmp,
-                    LOG_SAMPLE_DIR / f'{which_iter}_pnag' / f'free_{j:02d}{pnag_suffix}.png',
-                    nrow=N_FRAME,
-                    normalize=True,
-                    range=(0, 1)
-                )
+                torchvision.utils.save_image(tmp,
+                                             LOG_SAMPLE_DIR /
+                                             f'{which_iter}_pnag' /
+                                             f'free_{j:02d}{pnag_suffix}.png',
+                                             nrow=N_FRAME,
+                                             normalize=True,
+                                             range=(0, 1))
 
     samples_img = torch.cat(samples_img)
-    torchvision.utils.save_image(
-        samples_img,
-        LOG_SAMPLE_DIR / f'{which_iter}.png',
-        nrow=N_FRAME_,
-        normalize=True,
-        range=(0, 1)
-    )
+    torchvision.utils.save_image(samples_img,
+                                 LOG_SAMPLE_DIR / f'{which_iter}.png',
+                                 nrow=N_FRAME_,
+                                 normalize=True,
+                                 range=(0, 1))
 
     with open(LOG_SAMPLE_DIR / f'{which_iter}.txt', 'w') as f:
         f.write('\n'.join(captions_img))
@@ -793,132 +953,345 @@ def main():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--vae_path', type=str, help='path to your trained discrete VAE')
-    parser.add_argument('--cvae_path', type=str, help='path to your trained discrete VAE')
+    parser.add_argument('--vae_path',
+                        type=str,
+                        help='path to your trained discrete VAE')
+    parser.add_argument('--cvae_path',
+                        type=str,
+                        help='path to your trained discrete VAE')
     parser.add_argument('--dalle_path2', type=str, default=None)
-    parser.add_argument('--dalle_path', type=str, default=None, help='path to your partially trained DALL-E')
+    parser.add_argument('--dalle_path',
+                        type=str,
+                        default=None,
+                        help='path to your partially trained DALL-E')
     parser.add_argument('--which_vae', type=str, default='vqgan1024')
     parser.add_argument('--transformer_path', type=str, default=None)
-    parser.add_argument('--image_text_folder', type=str, required=True, help='path to your folder of images and text for learning the DALL-E')
+    parser.add_argument(
+        '--image_text_folder',
+        type=str,
+        required=True,
+        help='path to your folder of images and text for learning the DALL-E')
     parser.add_argument('--dataset', type=str, default='video_text')
     parser.add_argument('--dataset_keys', type=str, default=None)
     parser.add_argument('--dataset_cache', type=str, default=None)
-    parser.add_argument('--video_only', action = 'store_true')
-    parser.add_argument('--truncate_captions', dest='truncate_captions', action='store_true', help='Captions passed in which exceed the max token length will be truncated if this is set.')
-    parser.add_argument('--random_resize_crop_lower_ratio', dest='resize_ratio', type=float, default=0.75, help='Random resized crop lower ratio')
-    parser.add_argument('--which_tokenizer', type=str, default='simple', help='(yttm | hug | simple | chinese)')
+    parser.add_argument('--video_only', action='store_true')
+    parser.add_argument(
+        '--truncate_captions',
+        dest='truncate_captions',
+        action='store_true',
+        help=
+        'Captions passed in which exceed the max token length will be truncated if this is set.'
+    )
+    parser.add_argument('--random_resize_crop_lower_ratio',
+                        dest='resize_ratio',
+                        type=float,
+                        default=0.75,
+                        help='Random resized crop lower ratio')
+    parser.add_argument('--which_tokenizer',
+                        type=str,
+                        default='simple',
+                        help='(yttm | hug | simple | chinese)')
     parser.add_argument('--taming', dest='taming', action='store_true')
-    parser.add_argument('--bpe_path', type=str, help='path to your BPE json file')
-    parser.add_argument('--fp16', action='store_true', help='(experimental) - Enable DeepSpeed 16 bit precision. Reduces VRAM.')
-    parser.add_argument('--amp', action='store_true', help='Apex "O1" automatic mixed precision. More stable than 16 bit precision. Can\'t be used in conjunction with deepspeed zero stages 1-3.')
-    parser.add_argument('--name', default='dalle_train_transformer', help='experiment name, if not using wandb')
-    parser.add_argument('--visual', action='store_true', help='add visual control?')
+    parser.add_argument('--bpe_path',
+                        type=str,
+                        help='path to your BPE json file')
+    parser.add_argument(
+        '--fp16',
+        action='store_true',
+        help='(experimental) - Enable DeepSpeed 16 bit precision. Reduces VRAM.'
+    )
+    parser.add_argument(
+        '--amp',
+        action='store_true',
+        help=
+        'Apex "O1" automatic mixed precision. More stable than 16 bit precision. Can\'t be used in conjunction with deepspeed zero stages 1-3.'
+    )
+    parser.add_argument('--name',
+                        default='dalle_train_transformer',
+                        help='experiment name, if not using wandb')
+    parser.add_argument('--visual',
+                        action='store_true',
+                        help='add visual control?')
     parser.add_argument('--debug', action='store_true')
 
-    parser.add_argument('--rank', type=int, default=0, help='node rank for distributed training')
-    parser.add_argument('--gpu_ids', type=int, default=None, help='gpu id to use')
-    parser.add_argument('--workers', default=16, type=int, help='# data loading workers')
-    parser.add_argument('--world_size', default=1, type=int, help='number of nodes for distributed training')
-    parser.add_argument('--dist_url', default='tcp://localhost:10001', type=str, help='url used to set up distributed training')
-    parser.add_argument('--dist_backend', default='nccl', type=str, help='distributed backend')
-    parser.add_argument('--multiprocessing_distributed', action='store_true', help='Use multi-processing distributed training to launch N processes per node, which has N GPUs.')
+    parser.add_argument('--rank',
+                        type=int,
+                        default=0,
+                        help='node rank for distributed training')
+    parser.add_argument('--gpu_ids',
+                        type=int,
+                        default=None,
+                        help='gpu id to use')
+    parser.add_argument('--workers',
+                        default=16,
+                        type=int,
+                        help='# data loading workers')
+    parser.add_argument('--world_size',
+                        default=1,
+                        type=int,
+                        help='number of nodes for distributed training')
+    parser.add_argument('--dist_url',
+                        default='tcp://localhost:10001',
+                        type=str,
+                        help='url used to set up distributed training')
+    parser.add_argument('--dist_backend',
+                        default='nccl',
+                        type=str,
+                        help='distributed backend')
+    parser.add_argument(
+        '--multiprocessing_distributed',
+        action='store_true',
+        help=
+        'Use multi-processing distributed training to launch N processes per node, which has N GPUs.'
+    )
 
-    parser.add_argument('--save_every_n_steps', default = 2000, type = int, help = 'Save a checkpoint every n steps')
-    parser.add_argument('--batch_size', default = 4, type = int, help = 'Batch size')
-    parser.add_argument('--ga_steps', default = 1, type = int, help = 'Number of steps to accumulate gradients across per each iteration. DeepSpeed only.')
-    parser.add_argument('--learning_rate', default = 3e-4, type = float, help = 'Learning rate')
-    parser.add_argument('--clip_grad_norm', default = 0.5, type = float, help = 'Clip gradient norm')
-    parser.add_argument('--lr_decay', dest = 'lr_decay', action = 'store_true')
-    parser.add_argument('--freeze_transformer', action = 'store_true')
-    parser.add_argument('--tensorboard', action = 'store_true')
-    parser.add_argument('--use_html', action = 'store_true')
-    parser.add_argument("--log_root", type=str, help="where to save training logs", default='logs')
-    parser.add_argument("--log_every", type=int, default=200, help="logging every # iters")
-    parser.add_argument("--sample_every", type=int, default=1000, help="sample every # iters")
-    parser.add_argument('--n_sample', default = 4, type = int, help = 'Number of samples (text) to visualize')
-    parser.add_argument('--n_per_sample', default = 1, type = int, help = 'Number of images per text sample to visualize')
-    parser.add_argument('--seed', default = 42, type = int, help = 'Random seed')
-    parser.add_argument('--iters', default = 200000, type = int, help = 'Number of iterations')
-    parser.add_argument('--start_iter', default = None, type = int, help = 'start iter')
-    parser.add_argument('--epochs', default = 100, type = int, help = 'Number of epochs')
+    parser.add_argument('--save_every_n_steps',
+                        default=2000,
+                        type=int,
+                        help='Save a checkpoint every n steps')
+    parser.add_argument('--batch_size', default=4, type=int, help='Batch size')
+    parser.add_argument(
+        '--ga_steps',
+        default=1,
+        type=int,
+        help=
+        'Number of steps to accumulate gradients across per each iteration. DeepSpeed only.'
+    )
+    parser.add_argument('--learning_rate',
+                        default=3e-4,
+                        type=float,
+                        help='Learning rate')
+    parser.add_argument('--clip_grad_norm',
+                        default=0.5,
+                        type=float,
+                        help='Clip gradient norm')
+    parser.add_argument('--lr_decay', dest='lr_decay', action='store_true')
+    parser.add_argument('--freeze_transformer', action='store_true')
+    parser.add_argument('--tensorboard', action='store_true')
+    parser.add_argument('--use_html', action='store_true')
+    parser.add_argument("--log_root",
+                        type=str,
+                        help="where to save training logs",
+                        default='logs')
+    parser.add_argument("--log_every",
+                        type=int,
+                        default=200,
+                        help="logging every # iters")
+    parser.add_argument("--sample_every",
+                        type=int,
+                        default=1000,
+                        help="sample every # iters")
+    parser.add_argument('--n_sample',
+                        default=4,
+                        type=int,
+                        help='Number of samples (text) to visualize')
+    parser.add_argument('--n_per_sample',
+                        default=1,
+                        type=int,
+                        help='Number of images per text sample to visualize')
+    parser.add_argument('--seed', default=42, type=int, help='Random seed')
+    parser.add_argument('--iters',
+                        default=200000,
+                        type=int,
+                        help='Number of iterations')
+    parser.add_argument('--start_iter',
+                        default=None,
+                        type=int,
+                        help='start iter')
+    parser.add_argument('--epochs',
+                        default=100,
+                        type=int,
+                        help='Number of epochs')
     parser.add_argument("--limit_train_batches", type=float, default=1)
-    parser.add_argument('--resume', action = 'store_true')
-    parser.add_argument('--keep_n_checkpoints', default = None, type = int, help = '(Careful) Deletes old deepspeed checkpoints if there are more than n')
+    parser.add_argument('--resume', action='store_true')
+    parser.add_argument(
+        '--keep_n_checkpoints',
+        default=None,
+        type=int,
+        help=
+        '(Careful) Deletes old deepspeed checkpoints if there are more than n')
     parser.add_argument('--optimizer', type=str, default='adam')
-    parser.add_argument('--lr_scheduler', type=str, default='reducelronplateau')
-    parser.add_argument('--clip_ranking', action = 'store_true')
-    parser.add_argument('--clip_path', type=str, default=None, help='path to your pretrained CLIP')
-    parser.add_argument('--lr_scheduler_every', default = 1, type = int, help = 'step lr scheduler every n steps')
-    parser.add_argument('--lr_scheduler_step_size', default = 10000, type = int, help = 'T_max or step_size')
-    parser.add_argument('--lr_scheduler_warmup', default = 5000, type = int, help = 'T_max or step_size')
-    parser.add_argument('--weight_decay', type = float, default = 0)
-    parser.add_argument('--deterministic', action = 'store_true')
-    parser.add_argument('--beta_msm', default = 1.0, type = float)
-    parser.add_argument('--beta_rel', default = 0.5, type = float)
-    parser.add_argument('--beta_vid', default = 0, type = float)
-    parser.add_argument('--beta_gan', default = 0, type = float)
-    parser.add_argument('--beta_clip', default = 0, type = float)
-    parser.add_argument('--which_fake', type = str, default = 'mask_predict')
-    parser.add_argument('--frame_num', default = 8, type = int)
-    parser.add_argument('--frame_step', default = 8, type = int)
-    parser.add_argument('--estimate_real', action = 'store_true')
-    parser.add_argument('--pnag_argmax', action = 'store_true')
-    parser.add_argument('--pnag_dynamic', action = 'store_true')
-    parser.add_argument('--rand_visual', action = 'store_true')
+    parser.add_argument('--lr_scheduler',
+                        type=str,
+                        default='reducelronplateau')
+    parser.add_argument('--clip_ranking', action='store_true')
+    parser.add_argument('--clip_path',
+                        type=str,
+                        default=None,
+                        help='path to your pretrained CLIP')
+    parser.add_argument('--lr_scheduler_every',
+                        default=1,
+                        type=int,
+                        help='step lr scheduler every n steps')
+    parser.add_argument('--lr_scheduler_step_size',
+                        default=10000,
+                        type=int,
+                        help='T_max or step_size')
+    parser.add_argument('--lr_scheduler_warmup',
+                        default=5000,
+                        type=int,
+                        help='T_max or step_size')
+    parser.add_argument('--weight_decay', type=float, default=0)
+    parser.add_argument('--deterministic', action='store_true')
+    parser.add_argument('--beta_msm', default=1.0, type=float)
+    parser.add_argument('--beta_rel', default=0.5, type=float)
+    parser.add_argument('--beta_vid', default=0, type=float)
+    parser.add_argument('--beta_gan', default=0, type=float)
+    parser.add_argument('--beta_clip', default=0, type=float)
+    parser.add_argument('--which_fake', type=str, default='mask_predict')
+    parser.add_argument('--frame_num', default=8, type=int)
+    parser.add_argument('--frame_step', default=8, type=int)
+    parser.add_argument('--estimate_real', action='store_true')
+    parser.add_argument('--pnag_argmax', action='store_true')
+    parser.add_argument('--pnag_dynamic', action='store_true')
+    parser.add_argument('--rand_visual', action='store_true')
     # parser.add_argument('--oldrel', action = 'store_true')
-    parser.add_argument('--newmask', action = 'store_true')
-    parser.add_argument('--fullvc', action = 'store_true')
-    parser.add_argument('--negvc', action = 'store_true')
-    parser.add_argument('--vc_mode', type = str, default = None)
+    parser.add_argument('--newmask', action='store_true')
+    parser.add_argument('--fullvc', action='store_true')
+    parser.add_argument('--negvc', action='store_true')
+    parser.add_argument('--vc_mode', type=str, default=None)
     parser.add_argument('--attr_mode', type=str, default='object')
-    parser.add_argument('--n_accum_step', default = 1, type = int)
-    parser.add_argument('--dropout_vc', type = float, default = 0.1, help = 'prob of visual control to be zeroed')
-    parser.add_argument('--msm_strategy_prob', type = str, default = '7,1,1,1', help = 'comma separated list')
-    parser.add_argument('--msm_bernoulli_prob', type = str, default = '0.2,0.2', help = 'comma separated list')
-    parser.add_argument('--relvid_bernoulli_prob', type = str, default = '0.1,0.9', help = 'comma separated list')
-    parser.add_argument('--vid_strategy_prob', type = str, default = '1,1,1,1', help = 'comma separated list')
-    parser.add_argument('--rel_no_fully_masked', action = 'store_true')
-    parser.add_argument('--insert_sep', action = 'store_true')
-    parser.add_argument('--mask_predict_steps', nargs = '+', default = [0], type = int)
-    parser.add_argument('--mask_predict_steps1', default = 0, type = int)
-    parser.add_argument('--pc_prob', type = float, default = 0, help = 'prob of preservation control')
-    parser.add_argument('--drop_sentence', action = 'store_true')
+    parser.add_argument('--n_accum_step', default=1, type=int)
+    parser.add_argument('--dropout_vc',
+                        type=float,
+                        default=0.1,
+                        help='prob of visual control to be zeroed')
+    parser.add_argument('--msm_strategy_prob',
+                        type=str,
+                        default='7,1,1,1',
+                        help='comma separated list')
+    parser.add_argument('--msm_bernoulli_prob',
+                        type=str,
+                        default='0.2,0.2',
+                        help='comma separated list')
+    parser.add_argument('--relvid_bernoulli_prob',
+                        type=str,
+                        default='0.1,0.9',
+                        help='comma separated list')
+    parser.add_argument('--vid_strategy_prob',
+                        type=str,
+                        default='1,1,1,1',
+                        help='comma separated list')
+    parser.add_argument('--rel_no_fully_masked', action='store_true')
+    parser.add_argument('--insert_sep', action='store_true')
+    parser.add_argument('--mask_predict_steps',
+                        nargs='+',
+                        default=[0],
+                        type=int)
+    parser.add_argument('--mask_predict_steps1', default=0, type=int)
+    parser.add_argument('--pc_prob',
+                        type=float,
+                        default=0,
+                        help='prob of preservation control')
+    parser.add_argument('--drop_sentence', action='store_true')
     parser.add_argument('--fixed_language_model', type=str, default=None)
 
-    parser.add_argument('--dim', default = 512, type = int, help = 'Model dimension')
-    parser.add_argument('--text_seq_len', default = 256, type = int, help = 'Text sequence length')
-    parser.add_argument('--depth', default = 2, type = int, help = 'Model depth')
-    parser.add_argument('--heads', default = 8, type = int, help = 'Model number of heads')
-    parser.add_argument('--dim_head', default = 64, type = int, help = 'Model head dimension')
-    parser.add_argument('--reversible', dest = 'reversible', action='store_true')
-    parser.add_argument('--loss_img_weight', default = 7, type = int, help = 'Image loss weight')
-    parser.add_argument('--attn_types', default = 'full', type = str, help = 'comma separated list of attention types. attention type can be: full or sparse or axial_row or axial_col or conv_like.')
+    parser.add_argument('--dim', default=512, type=int, help='Model dimension')
+    parser.add_argument('--text_seq_len',
+                        default=256,
+                        type=int,
+                        help='Text sequence length')
+    parser.add_argument('--depth', default=2, type=int, help='Model depth')
+    parser.add_argument('--heads',
+                        default=8,
+                        type=int,
+                        help='Model number of heads')
+    parser.add_argument('--dim_head',
+                        default=64,
+                        type=int,
+                        help='Model head dimension')
+    parser.add_argument('--reversible', dest='reversible', action='store_true')
+    parser.add_argument('--loss_img_weight',
+                        default=7,
+                        type=int,
+                        help='Image loss weight')
+    parser.add_argument(
+        '--attn_types',
+        default='full',
+        type=str,
+        help=
+        'comma separated list of attention types. attention type can be: full or sparse or axial_row or axial_col or conv_like.'
+    )
     parser.add_argument('--pretrained_transformer', type=str, default='none')
-    parser.add_argument('--image_size', default = None, type = int, help = 'force to use this size if set to > 0')
-    parser.add_argument('--num_targets', default = 1, type = int, help = 'number of frames to generate')
-    parser.add_argument('--num_visuals', default = 1, type = int, help = 'number of frames to generate')
+    parser.add_argument('--image_size',
+                        default=None,
+                        type=int,
+                        help='force to use this size if set to > 0')
+    parser.add_argument('--num_targets',
+                        default=1,
+                        type=int,
+                        help='number of frames to generate')
+    parser.add_argument('--num_visuals',
+                        default=1,
+                        type=int,
+                        help='number of frames to generate')
     parser.add_argument('--use_separate_visual_emb', action='store_true')
-    parser.add_argument('--num_workers', default = 16, type = int)
-    parser.add_argument('--text_emb_bottleneck', type = str, default = None)
-    parser.add_argument('--clip_text_emb', type = str, default = None)
-    parser.add_argument('--visual_aug_mode', type = str, default = None)
+    parser.add_argument('--num_workers', default=16, type=int)
+    parser.add_argument('--text_emb_bottleneck', type=str, default=None)
+    parser.add_argument('--clip_text_emb', type=str, default=None)
+    parser.add_argument('--visual_aug_mode', type=str, default=None)
 
-    parser.add_argument('--mp_T1n', type = int, default = 10, help = 'L1, number of steps for mask')
-    parser.add_argument('--mp_T2n', type = int, default = 10, help = 'L2, number of steps for mask')
-    parser.add_argument('--mp_T3n', type = int, default = 30, help = 'L3, number of steps for mask')
-    parser.add_argument('--mp_N1n', type = float, default = 0.9, help = 'alpha1 for mask')
-    parser.add_argument('--mp_N2n', type = float, default = 0.1, help = 'beta1 for mask')
-    parser.add_argument('--mp_N3n', type = float, default = 0.125, help = 'alpha2 for mask')
-    parser.add_argument('--mp_N4n', type = float, default = 0.0625, help = 'alpha3 for mask')
-    parser.add_argument('--mp_T1t', type = int, default = 10, help = 'L1, number of steps for noise')
-    parser.add_argument('--mp_T2t', type = int, default = 5, help = 'L2, number of steps for noise')
-    parser.add_argument('--mp_T3t', type = int, default = 35, help = 'L3, number of steps for noise')
-    parser.add_argument('--mp_N1t', type = float, default = 0., help = 'alpha1 for noise')
-    parser.add_argument('--mp_N2t', type = float, default = 0., help = 'beta1 for noise')
-    parser.add_argument('--mp_N3t', type = float, default = 0., help = 'alpha2 for noise')
-    parser.add_argument('--mp_N4t', type = float, default = 0., help = 'alpha3 for noise')
-    parser.add_argument('--mp_T', type = int, default = 20, help = 'number of total steps for mask-predict')
-    parser.add_argument('--mp_B', type = int, default = 1, help = 'beam search size')
+    parser.add_argument('--mp_T1n',
+                        type=int,
+                        default=10,
+                        help='L1, number of steps for mask')
+    parser.add_argument('--mp_T2n',
+                        type=int,
+                        default=10,
+                        help='L2, number of steps for mask')
+    parser.add_argument('--mp_T3n',
+                        type=int,
+                        default=30,
+                        help='L3, number of steps for mask')
+    parser.add_argument('--mp_N1n',
+                        type=float,
+                        default=0.9,
+                        help='alpha1 for mask')
+    parser.add_argument('--mp_N2n',
+                        type=float,
+                        default=0.1,
+                        help='beta1 for mask')
+    parser.add_argument('--mp_N3n',
+                        type=float,
+                        default=0.125,
+                        help='alpha2 for mask')
+    parser.add_argument('--mp_N4n',
+                        type=float,
+                        default=0.0625,
+                        help='alpha3 for mask')
+    parser.add_argument('--mp_T1t',
+                        type=int,
+                        default=10,
+                        help='L1, number of steps for noise')
+    parser.add_argument('--mp_T2t',
+                        type=int,
+                        default=5,
+                        help='L2, number of steps for noise')
+    parser.add_argument('--mp_T3t',
+                        type=int,
+                        default=35,
+                        help='L3, number of steps for noise')
+    parser.add_argument('--mp_N1t',
+                        type=float,
+                        default=0.,
+                        help='alpha1 for noise')
+    parser.add_argument('--mp_N2t',
+                        type=float,
+                        default=0.,
+                        help='beta1 for noise')
+    parser.add_argument('--mp_N3t',
+                        type=float,
+                        default=0.,
+                        help='alpha2 for noise')
+    parser.add_argument('--mp_N4t',
+                        type=float,
+                        default=0.,
+                        help='alpha3 for noise')
+    parser.add_argument('--mp_T',
+                        type=int,
+                        default=20,
+                        help='number of total steps for mask-predict')
+    parser.add_argument('--mp_B', type=int, default=1, help='beam search size')
 
     parser.add_argument('--ar', action='store_true')
     parser.add_argument('--slow', action='store_true')
@@ -942,11 +1315,9 @@ def main():
     ngpus_per_node = torch.cuda.device_count()
     if args.multiprocessing_distributed:
         args.world_size = ngpus_per_node * args.world_size
-        mp.spawn(
-            main_worker,
-            nprocs=ngpus_per_node,
-            args=(ngpus_per_node, args)
-        )
+        mp.spawn(main_worker,
+                 nprocs=ngpus_per_node,
+                 args=(ngpus_per_node, args))
     else:
         main_worker(
             args.gpu_ids,
@@ -975,27 +1346,26 @@ def main_worker(gpu, ngpus_per_node, args):
 
         utils.seed_everything(args.seed + args.rank)  # TODO
 
-        dist.init_process_group(
-            backend=args.dist_backend,
-            init_method=args.dist_url,
-            world_size=args.world_size,
-            rank=args.rank
-        )
+        dist.init_process_group(backend=args.dist_backend,
+                                init_method=args.dist_url,
+                                world_size=args.world_size,
+                                rank=args.rank)
         if args.gpu is not None:
             torch.cuda.set_device(args.gpu)
             args.batch_size = int(args.batch_size / ngpus_per_node)
-            args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
+            args.workers = int(
+                (args.workers + ngpus_per_node - 1) / ngpus_per_node)
 
     else:
         raise NotImplementedError("Only DistributedDataParallel is supported.")
-    
-    assert Path(args.image_text_folder).exists(), f'The path {args.image_text_folder} was not found.'
+
+    assert Path(args.image_text_folder).exists(
+    ), f'The path {args.image_text_folder} was not found.'
 
     def is_root_worker():
-        return (
-            not args.multiprocessing_distributed or 
-            (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0)
-        )
+        return (not args.multiprocessing_distributed
+                or (args.multiprocessing_distributed
+                    and args.rank % ngpus_per_node == 0))
 
     # constants
 
@@ -1047,11 +1417,14 @@ def main_worker(gpu, ngpus_per_node, args):
     ATTN_TYPES = tuple(args.attn_types.split(','))
 
     N_FRAME = args.num_targets
-    MSM_STRATEGY_PROB = np.array(list(map(float, args.msm_strategy_prob.split(','))))
+    MSM_STRATEGY_PROB = np.array(
+        list(map(float, args.msm_strategy_prob.split(','))))
     MSM_STRATEGY_PROB /= MSM_STRATEGY_PROB.sum()
     MSM_BERNOULLI_PROB = list(map(float, args.msm_bernoulli_prob.split(',')))
-    RELVID_BERNOULLI_PROB = list(map(float, args.relvid_bernoulli_prob.split(',')))
-    VID_STRATEGY_PROB = np.array(list(map(float, args.vid_strategy_prob.split(','))))
+    RELVID_BERNOULLI_PROB = list(
+        map(float, args.relvid_bernoulli_prob.split(',')))
+    VID_STRATEGY_PROB = np.array(
+        list(map(float, args.vid_strategy_prob.split(','))))
     VID_STRATEGY_PROB /= VID_STRATEGY_PROB.sum()
 
     # logging
@@ -1070,17 +1443,21 @@ def main_worker(gpu, ngpus_per_node, args):
         os.makedirs(LOG_DIR / 'weights', exist_ok=True)
         utils.print_args(None, args)
         if args.ar:
-            shutil.copyfile('dalle_pytorch/dalle_artv.py', LOG_DIR / 'dalle_artv.py.txt')
+            shutil.copyfile('dalle_pytorch/dalle_artv.py',
+                            LOG_DIR / 'dalle_artv.py.txt')
         elif args.dm:
-            shutil.copyfile('dalle_pytorch/dalle_absorb.py', LOG_DIR / 'dalle_absorb.py.txt')
+            shutil.copyfile('dalle_pytorch/dalle_absorb.py',
+                            LOG_DIR / 'dalle_absorb.py.txt')
         else:
-            shutil.copyfile('dalle_pytorch/dalle_bert.py', LOG_DIR / 'dalle_bert.py.txt')
+            shutil.copyfile('dalle_pytorch/dalle_bert.py',
+                            LOG_DIR / 'dalle_bert.py.txt')
 
     USE_HTML = args.use_html
     LOG_WEB_DIR = LOG_DIR / 'web'
     webpage = None
     if USE_HTML and is_root_worker():
-        webpage = utils_html.initialize_webpage(LOG_WEB_DIR, 'DALLE: ' + args.name, RESUME)
+        webpage = utils_html.initialize_webpage(LOG_WEB_DIR,
+                                                'DALLE: ' + args.name, RESUME)
 
     # tokenizer
 
@@ -1089,8 +1466,10 @@ def main_worker(gpu, ngpus_per_node, args):
     # if text_feature_dim > 0:
     #     tokenizer = None  # if use fixed text lang model, set tokenizer to None
     if args.fixed_language_model is not None:
-        tokenizer2, language_model, text_feature_dim, encode_text = get_fixed_language_model(args)
-        language_model = model_to_gpu(language_model, args.gpu, True)  # TODO: false
+        tokenizer2, language_model, text_feature_dim, encode_text = get_fixed_language_model(
+            args)
+        language_model = model_to_gpu(language_model, args.gpu,
+                                      True)  # TODO: false
         tokenizer = None  # TODO: avoid tokenization and get raw text
     else:
         text_feature_dim = 0
@@ -1119,22 +1498,20 @@ def main_worker(gpu, ngpus_per_node, args):
         assert DALLE_PATH.exists(), 'DALL-E model file does not exist'
         print(f"resuming from {DALLE_PATH}")
         loaded_obj = torch.load(str(DALLE_PATH), map_location='cpu')
-        dalle_params, vae_params = loaded_obj['hparams'], loaded_obj['vae_params']
-        model_weights, optim_weights = loaded_obj['weights'], loaded_obj['optimizer']
+        dalle_params, vae_params = loaded_obj['hparams'], loaded_obj[
+            'vae_params']
+        model_weights, optim_weights = loaded_obj['weights'], loaded_obj[
+            'optimizer']
         GLOBAL_STEPS = loaded_obj.get('iter', 0)
         NUM_DATA_SEEN = loaded_obj.get('num_data_seen', 0)
         START_ITER = args.start_iter or GLOBAL_STEPS
 
-        vae, vae_params = get_vae_model(
-            args.which_vae,
-            vae_params=vae_params,
-            vae_path=VAE_PATH,
-            image_size=args.image_size
-        )
+        vae, vae_params = get_vae_model(args.which_vae,
+                                        vae_params=vae_params,
+                                        vae_path=VAE_PATH,
+                                        image_size=args.image_size)
 
-        dalle_params = dict(
-            **dalle_params
-        )
+        dalle_params = dict(**dalle_params)
 
     else:
         vae, vae_params = get_vae_model(
@@ -1208,7 +1585,7 @@ def main_worker(gpu, ngpus_per_node, args):
         del ckpt
     if optim_weights is not None:
         opt.load_state_dict(optim_weights)
-    
+
     ####################################################
     if args.dalle_path2 is not None:
         assert exists(args.dalle_path2), 'DALLE model file does not exist'
@@ -1249,7 +1626,8 @@ def main_worker(gpu, ngpus_per_node, args):
     ds = get_dataset(args, tokenizer)
     assert len(ds) > 0, 'dataset is empty'
     if args.limit_train_batches < 1:
-        indices = torch.randperm(len(ds))[:int(args.limit_train_batches * len(ds))]
+        indices = torch.randperm(len(ds))[:int(args.limit_train_batches *
+                                               len(ds))]
         ds = torch.utils.data.Subset(ds, indices)
     if is_root_worker():
         print(f'{len(ds)} image-text pairs found for training')
@@ -1273,7 +1651,7 @@ def main_worker(gpu, ngpus_per_node, args):
     distr_dalle, distr_opt, distr_dl, distr_scheduler = dalle, opt, dl, scheduler
 
     # clipper
-    
+
     # clipper, clip_tokenizer = get_clipper(args)
     clipper = None
     if args.clip_text_emb is not None:
@@ -1293,13 +1671,18 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if is_root_worker():
         with open(LOG_FILE_NAME, 'a+') as f:
-            f.write(f"Name: {getattr(args, 'name', 'NA')} Time: {datetime.now()}\n{'-'*50}\n")
+            f.write(
+                f"Name: {getattr(args, 'name', 'NA')} Time: {datetime.now()}\n{'-'*50}\n"
+            )
 
     distr_dl_iter = sample_data(distr_dl, data_sampler)
 
     pbar = range(ITERS)  # TODO
     if is_root_worker():
-        pbar = tqdm(pbar, initial=START_ITER, dynamic_ncols=True, smoothing=0.01)
+        pbar = tqdm(pbar,
+                    initial=START_ITER,
+                    dynamic_ncols=True,
+                    smoothing=0.01)
 
     for idx in pbar:
         i = idx + START_ITER
@@ -1313,9 +1696,11 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if args.negvc:
             text, frames, visuals, visuals_neg, text_neg = next(distr_dl_iter)
-            visuals_neg, text_neg = map(lambda t: t.cuda(), (visuals_neg, text_neg))
+            visuals_neg, text_neg = map(lambda t: t.cuda(),
+                                        (visuals_neg, text_neg))
         else:
-            text, frames, visuals = next(distr_dl_iter)  # frames [B, T, C, H, W]
+            text, frames, visuals = next(
+                distr_dl_iter)  # frames [B, T, C, H, W]
         if args.visual and len(visuals.shape) == 4:
             assert args.num_visuals == 1
             visuals = visuals.unsqueeze(1)
@@ -1341,24 +1726,27 @@ def main_worker(gpu, ngpus_per_node, args):
                     'attention_mask': encoded_input['attention_mask'].cuda(),
                 }
                 model_output = language_model(**encoded_input)
-                text = mean_pooling(model_output, encoded_input['attention_mask'])
+                text = mean_pooling(model_output,
+                                    encoded_input['attention_mask'])
         else:
             text = text.cuda()
             text_description = None
 
-        target = frames[:,:args.num_targets,...]
+        target = frames[:, :args.num_targets, ...]
 
         # Train dalle
 
         loss_msm, loss_rel, _, loss_vid, fake_sample, text_feat_before, text_feat_after = distr_dalle(
             text,
-            visual=visuals if (args.visual and (args.fullvc or random.random() >= args.dropout_vc)) else None,
+            visual=visuals if
+            (args.visual and
+             (args.fullvc or random.random() >= args.dropout_vc)) else None,
             target=target,
             erase_visual=args.rand_visual,
             return_loss=True,
             return_fake=False,
-            rel=args.beta_rel>0,
-            vid=args.beta_vid>0,
+            rel=args.beta_rel > 0,
+            vid=args.beta_vid > 0,
             msm_strategy_prob=MSM_STRATEGY_PROB,
             msm_bernoulli_prob=MSM_BERNOULLI_PROB,
             relvid_bernoulli_prob=RELVID_BERNOULLI_PROB,
@@ -1377,17 +1765,19 @@ def main_worker(gpu, ngpus_per_node, args):
             loss_type=args.dm_loss_type,
         )
         if args.clip_text_emb == 'before':
-            frame_idx = random.randint(0, frames.shape[1]-1)
-            image_input = frames[:,frame_idx,...]
+            frame_idx = random.randint(0, frames.shape[1] - 1)
+            image_input = frames[:, frame_idx, ...]
             image_feat = clip_encode_image(clipper, image_input)
-            loss_mi_clip = -torch.mean(F.cosine_similarity(text_feat_before, image_feat.detach()))
+            loss_mi_clip = -torch.mean(
+                F.cosine_similarity(text_feat_before, image_feat.detach()))
         elif args.clip_text_emb == 'after':
-            frame_idx = random.randint(0, frames.shape[1]-1)
-            image_input = frames[:,frame_idx,...]
+            frame_idx = random.randint(0, frames.shape[1] - 1)
+            image_input = frames[:, frame_idx, ...]
             image_feat = clip_encode_image(clipper, image_input)
-            loss_mi_clip = -torch.mean(F.cosine_similarity(text_feat_after, image_feat.detach()))
-        loss = (args.beta_msm * loss_msm + args.beta_rel * loss_rel + args.beta_vid * loss_vid
-            + args.beta_clip * loss_mi_clip)
+            loss_mi_clip = -torch.mean(
+                F.cosine_similarity(text_feat_after, image_feat.detach()))
+        loss = (args.beta_msm * loss_msm + args.beta_rel * loss_rel +
+                args.beta_vid * loss_vid + args.beta_clip * loss_mi_clip)
 
         distr_opt.zero_grad()
         loss.backward()
@@ -1397,34 +1787,27 @@ def main_worker(gpu, ngpus_per_node, args):
         avg_loss = reduce_loss(loss)
 
         if is_root_worker():
-            pbar.set_description(
-                (
-                    f"loss {avg_loss.item():.4f} "
-                )
-            )
+            pbar.set_description((f"loss {avg_loss.item():.4f} "))
 
         if i % args.log_every == 0 and is_root_worker():
             with open(LOG_FILE_NAME, 'a+') as f:
-                f.write(
-                    (
-                        f"iter {i:07d}; "
-                        f"MSM {reduce_loss(loss_msm).item():.4f}; "
-                        f"REL {reduce_loss(loss_rel).item():.4f}; "
-                        f"VID {reduce_loss(loss_vid).item():.4f}; "
-                        f"lr {distr_opt.param_groups[0]['lr']}"
-                        f"\n"
-                    )
-                )
+                f.write((f"iter {i:07d}; "
+                         f"MSM {reduce_loss(loss_msm).item():.4f}; "
+                         f"REL {reduce_loss(loss_rel).item():.4f}; "
+                         f"VID {reduce_loss(loss_vid).item():.4f}; "
+                         f"lr {distr_opt.param_groups[0]['lr']}"
+                         f"\n"))
 
-        if args.save_every_n_steps > 0 and i % args.save_every_n_steps == 0 and is_root_worker():
+        if args.save_every_n_steps > 0 and i % args.save_every_n_steps == 0 and is_root_worker(
+        ):
             save_model(
                 CKPT_DIR / which_iter,
-                params = {
+                params={
                     'iter': i,
                     'hparams': dalle_params,
                     'vae_params': vae_params,
                 },
-                states = {
+                states={
                     'weights': dalle_module.state_dict(),
                     'optimizer': opt.state_dict(),
                 },
@@ -1455,12 +1838,12 @@ def main_worker(gpu, ngpus_per_node, args):
     if is_root_worker():
         save_model(
             CKPT_DIR / 'last',
-            params = {
+            params={
                 'iter': i,
                 'hparams': dalle_params,
                 'vae_params': vae_params,
             },
-            states = {
+            states={
                 'weights': dalle_module.state_dict(),
                 'optimizer': opt.state_dict(),
             },

@@ -16,12 +16,13 @@ from copy import deepcopy
 # import matplotlib.pyplot as plt
 from datetime import datetime
 import pdb
+
 st = pdb.set_trace
 
 
 class Config:
     def __init__(self, **kwargs):
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             setattr(self, k, v)
 
 
@@ -74,13 +75,16 @@ def print_args(parser, args):
     with open(file_name, 'a+') as f:
         f.write(f'Time: {datetime.now()}\n')
         if os.getenv('CUDA_VISIBLE_DEVICES'):
-            f.write('CUDA_VISIBLE_DEVICES=%s ' % os.getenv('CUDA_VISIBLE_DEVICES'))
-        f.write('deepspeed ' if getattr(args, 'deepspeed', False) else 'python3 ')
+            f.write('CUDA_VISIBLE_DEVICES=%s ' %
+                    os.getenv('CUDA_VISIBLE_DEVICES'))
+        f.write(
+            'deepspeed ' if getattr(args, 'deepspeed', False) else 'python3 ')
         f.write(' '.join(sys.argv))
         f.write('\n\n')
 
     # backup train code
-    shutil.copyfile(sys.argv[0], log_dir / f'{os.path.basename(sys.argv[0])}.txt')
+    shutil.copyfile(sys.argv[0],
+                    log_dir / f'{os.path.basename(sys.argv[0])}.txt')
 
 
 def print_models(models, args):
@@ -90,7 +94,9 @@ def print_models(models, args):
     os.makedirs(log_dir, exist_ok=True)
     file_name = log_dir / 'models.txt'
     with open(file_name, 'w') as f:
-        f.write(f"Name: {getattr(args, 'name', 'NA')} Time: {datetime.now()}\n{'-'*50}\n")
+        f.write(
+            f"Name: {getattr(args, 'name', 'NA')} Time: {datetime.now()}\n{'-'*50}\n"
+        )
         for model in models:
             f.write(str(model))
             f.write("\n\n")
@@ -98,12 +104,16 @@ def print_models(models, args):
 
 def save_image(ximg, path):
     n_sample = ximg.shape[0]
-    utils.save_image(ximg, path, nrow=int(n_sample ** 0.5), normalize=True, range=(-1, 1))
+    utils.save_image(ximg,
+                     path,
+                     nrow=int(n_sample**0.5),
+                     normalize=True,
+                     range=(-1, 1))
 
 
 def save_video(xseq, path):
     video = xseq.data.cpu().clamp(-1, 1)
-    video = ((video+1.)/2.*255).type(torch.uint8).permute(0, 2, 3, 1)
+    video = ((video + 1.) / 2. * 255).type(torch.uint8).permute(0, 2, 3, 1)
     write_video(path, video, fps=15)
 
 
@@ -111,6 +121,7 @@ def save_video(xseq, path):
 copied from VQGAN main
 """
 import importlib
+
 
 def get_obj_from_str(string, reload=False):
     module, cls = string.rsplit(".", 1)
@@ -129,6 +140,8 @@ def instantiate_from_config(config):
 """
 copied from MoCoGAN-HD
 """
+
+
 class GANLoss(nn.Module):
     def __init__(self,
                  use_lsgan=True,

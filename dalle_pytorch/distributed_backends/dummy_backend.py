@@ -34,14 +34,14 @@ class DummyBackend(DistributedBackend):
         pass
 
     def _distribute(
-            self,
-            _args=None,
-            model=None,
-            optimizer=None,
-            _model_parameters=None,
-            training_data=None,
-            lr_scheduler=None,
-            **_kwargs,
+        self,
+        _args=None,
+        model=None,
+        optimizer=None,
+        _model_parameters=None,
+        training_data=None,
+        lr_scheduler=None,
+        **_kwargs,
     ):
         """Return the model, optimizer, dataloader, and learning rate scheduler
         as is.

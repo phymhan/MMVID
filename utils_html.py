@@ -13,7 +13,9 @@ import pickle
 from torchvision.io import write_video
 
 import pdb
+
 st = pdb.set_trace
+
 
 class HTML:
     """This HTML class allows us to save images and write texts into a single HTML file.
@@ -21,8 +23,13 @@ class HTML:
      <add_images> (add a row of images to the HTML file), and <save> (save the HTML to the disk).
      It is based on Python library 'dominate', a Python library for creating and manipulating HTML documents using a DOM API.
     """
-
-    def __init__(self, web_dir, title, refresh=0, cache=False, resume=False, reverse=False):
+    def __init__(self,
+                 web_dir,
+                 title,
+                 refresh=0,
+                 cache=False,
+                 resume=False,
+                 reverse=False):
         """Initialize the HTML classes
         Parameters:
             web_dir (str) -- a directory that stores the webpage. HTML file will be created at <web_dir>/index.html; images will be saved at <web_dir/images/
@@ -37,8 +44,8 @@ class HTML:
             os.makedirs(self.web_dir)
         if not os.path.exists(self.img_dir):
             os.makedirs(self.img_dir)
-        
-        self.use_cache  = cache
+
+        self.use_cache = cache
         self.cache_file = os.path.join(self.web_dir, 'cache.pkl')
         self.cache = []
         self.reverse = reverse
@@ -88,7 +95,7 @@ class HTML:
     def _add_header(self, doc, text):
         with doc:
             h3(text)
-    
+
     def add_header(self, text):
         """Insert a header to the HTML file
         Parameters:
@@ -105,10 +112,13 @@ class HTML:
         with t:
             with tr():
                 for im, txt, link in zip(ims, txts, links):
-                    with td(style="word-wrap: break-word;", halign="center", valign="top"):
+                    with td(style="word-wrap: break-word;",
+                            halign="center",
+                            valign="top"):
                         with p():
                             with a(href=os.path.join('images', link)):
-                                img(style="width:%dpx" % width, src=os.path.join('images', im))
+                                img(style="width:%dpx" % width,
+                                    src=os.path.join('images', im))
                             br()
                             p(txt)
 
@@ -137,39 +147,49 @@ class HTML:
 
 """ helpers
 """
+
+
 def initialize_webpage(web_dir, name='dalle', resume=False, reverse=True):
     # web_dir = Path(web_dir)
     # os.makedirs(web_dir, exist_ok=True)
     # os.makedirs(web_dir / 'images', exist_ok=True)
-    webpage = HTML(web_dir, name, resume=resume, cache=True, reverse=reverse, refresh=0)
+    webpage = HTML(web_dir,
+                   name,
+                   resume=resume,
+                   cache=True,
+                   reverse=reverse,
+                   refresh=0)
     return webpage
+
 
 @torch.no_grad()
 def save_image_tensor(tensor, path, video_format='gif'):
     tensor = tensor.squeeze(0)
-    if len(tensor.shape) == 3 or (len(tensor.shape) == 4 and tensor.shape[0] == 1):
+    if len(tensor.shape) == 3 or (len(tensor.shape) == 4
+                                  and tensor.shape[0] == 1):
         # Save image
         path = str(path) + '.png'
-        torchvision.utils.save_image(
-            tensor,
-            path,
-            normalize=True,
-            range=(0, 1)
-        )
-    elif len(tensor.shape) == 4 or (len(tensor.shape) == 5 and tensor.shape[0] == 1):
+        torchvision.utils.save_image(tensor,
+                                     path,
+                                     normalize=True,
+                                     range=(0, 1))
+    elif len(tensor.shape) == 4 or (len(tensor.shape) == 5
+                                    and tensor.shape[0] == 1):
         if video_format == 'gif':
             # Save gif
             path = str(path) + '.gif'
             imageio.mimsave(
                 path,
-                (tensor.data.cpu().clamp(0, 1)*255).type(torch.uint8).permute(0, 2, 3, 1).numpy(),
+                (tensor.data.cpu().clamp(0, 1) * 255).type(
+                    torch.uint8).permute(0, 2, 3, 1).numpy(),
             )
         else:
             # Save mp4
             path = str(path) + '.mp4'
             write_video(
                 path,
-                (tensor.data.cpu().clamp(0, 1)*255).type(torch.uint8).permute(0, 2, 3, 1),
+                (tensor.data.cpu().clamp(0, 1) * 255).type(
+                    torch.uint8).permute(0, 2, 3, 1),
                 fps=4,
             )
     else:
@@ -177,8 +197,15 @@ def save_image_tensor(tensor, path, video_format='gif'):
     name = Path(path).name
     return name
 
+
 @torch.no_grad()
-def save_grid(webpage=None, tensor=None, caption=None, name='', nrow=1, width=256, video_format='gif'):
+def save_grid(webpage=None,
+              tensor=None,
+              caption=None,
+              name='',
+              nrow=1,
+              width=256,
+              video_format='gif'):
     """assuming each row contains multiple samples of one text, if nrow == 1 save all samples in a row"""
     img_dir = Path(webpage.get_image_dir())
 
@@ -218,8 +245,8 @@ def save_grid(webpage=None, tensor=None, caption=None, name='', nrow=1, width=25
         for i in range(n_row):
             # imgs_row = imgs[i*nrow:(i+1)*nrow]
             # txts_row = caption[i*nrow:(i+1)*nrow]
-            imgs_row = imgs[cumsum[i]:cumsum[i+1]]
-            txts_row = caption[cumsum[i]:cumsum[i+1]]
+            imgs_row = imgs[cumsum[i]:cumsum[i + 1]]
+            txts_row = caption[cumsum[i]:cumsum[i + 1]]
             webpage.add_images(imgs_row, txts_row, imgs_row, width=width)
 
     webpage.save()

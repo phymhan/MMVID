@@ -21,7 +21,8 @@ def embed_images_in_inception(imgs, inception_path, layer_name, batch_size=32):
     i = 0
     with tf.Session() as sess:
         while i < len(imgs):
-            embeddings.append(sess.run(
-                feature_tensor, feed_dict={input_tensor: imgs[i:i+batch_size]}))
+            embeddings.append(
+                sess.run(feature_tensor,
+                         feed_dict={input_tensor: imgs[i:i + batch_size]}))
             i += batch_size
     return np.concatenate(embeddings, axis=0)
