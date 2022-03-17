@@ -21,6 +21,9 @@ This repo contains the code for training and testing, models, and data for MMVID
 
 
 ## MMVID Code 
+
+## VQGAN
+- [ ] TO DO: add training scripts for VQGAN models
 ## Multi-Modal Vox-Celeb
 
 - [ ] TO DO: add explanation
@@ -106,6 +109,8 @@ This repo contains the code for training and testing, models, and data for MMVID
 
 
 ## iPER
+- [ ] TO DO: add trainings scripts
+- [ ] TO DO: add more detailed explanation
 
 <details>
   <summary>Long video generation </summary>
@@ -121,6 +126,8 @@ This repo contains the code for training and testing, models, and data for MMVID
 
 
 ## Shapes
+- [ ] TO DO: add training scripts
+- [ ] TO DO: add more detailed explanation
 
 <details>
   <summary>Inference </summary>
@@ -134,13 +141,21 @@ This repo contains the code for training and testing, models, and data for MMVID
 </details>
 
 
+## MUG
+
+- [ ] TO DO: add scripts for MUG
+- [ ] TO DO: add more detailed explanation
+
 
 
 
 ## Pretrained Models
+- [ ] TO DO: explain the models in checkpoint folder, e.g., mm-voxceleb-model (link)
+
 [checkpoint folder](https://drive.google.com/drive/folders/1q_YdEBylrAWeuSleq6Jp58epE3KM-oXK?usp=sharing)
 
 ## Multi-Modal Vox-Celeb Dataset
+- [ ] TO DO: add detailed explanation for the dataset
 
 [Dataset](mm_vox_celeb/README.md)
 
