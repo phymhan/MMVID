@@ -150,17 +150,12 @@ class VQGanVAE1024(nn.Module):
         model_filename = 'vqgan.1024.model.ckpt'
         config_filename = 'vqgan.1024.config.yml'
 
-        # download(VQGAN_VAE_CONFIG_PATH, config_filename)
-        # download(VQGAN_VAE_PATH, model_filename)
-
-        # config = OmegaConf.load(str(Path(CACHE_PATH) / config_filename))
         config_path = str(Path('pretrained') / config_filename)
         config = OmegaConf.load(config_path)
         if image_size:
             config.model.params['ddconfig']['resolution'] = image_size
         model = VQModel(**config.model.params)
 
-        # state = torch.load(str(Path(CACHE_PATH) / model_filename), map_location = 'cpu')['state_dict']
         if vae_path is None:
             model_path = str(Path('pretrained') / model_filename)
         else:
