@@ -159,6 +159,18 @@ This repo contains the code for training and testing, models, and data for MMVID
 
 [Dataset](mm_vox_celeb/README.md)
 
+## Acknowledgement
+This code is heavily based on [DALLE-PyTorch](https://github.com/lucidrains/DALLE-pytorch). The authors thank everyone who makes their code and models available.
+- [PyTorch](https://pytorch.org/)
+- [DALLE-PyTorch](https://github.com/lucidrains/DALLE-pytorch)
+- [CLIP](https://github.com/openai/CLIP)
+- [Taming Transformer](https://github.com/CompVis/taming-transformers)
+- [Unleashing Transformers](https://github.com/samb-t/unleashing-transformers)
+- [Precision Recall Distribution](https://github.com/msmsajjadi/precision-recall-distributions)
+- [Frechet Video Distance](https://github.com/google-research/google-research/tree/master/frechet_video_distance)
+- [Facenet-PyTorch](https://github.com/timesler/facenet-pytorch)
+
+
 ## Citation
 
 If our code, data, or models help your work, please cite our paper:

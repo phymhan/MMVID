@@ -20,13 +20,15 @@ import torch.nn.functional as F
 
 from einops import rearrange
 
-from dalle_pytorch import distributed_utils
+# from dalle_pytorch import distributed_utils
 
 import pdb
 
 st = pdb.set_trace
 
 # constants
+
+is_distributed = False
 
 # CACHE_PATH = os.path.expanduser("~/.cache/dalle")
 CACHE_PATH = '/nfs/lhan/active/DALLE/pretrained'
@@ -104,15 +106,12 @@ def download(url, filename=None, root=CACHE_PATH):
 
 # pretrained Discrete VAE from OpenAI
 
-
 class OpenAIDiscreteVAE(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # self.enc = load_model(download(OPENAI_VAE_ENCODER_PATH))
-        # self.dec = load_model(download(OPENAI_VAE_DECODER_PATH))
-        self.enc = load_model('/nfs/lhan/active/DALLE/pretrained/encoder.pkl')
-        self.dec = load_model('/nfs/lhan/active/DALLE/pretrained/decoder.pkl')
+        self.enc = load_model(download(OPENAI_VAE_ENCODER_PATH))
+        self.dec = load_model(download(OPENAI_VAE_DECODER_PATH))
 
         self.num_layers = 3
         self.image_size = 256
@@ -142,7 +141,6 @@ class OpenAIDiscreteVAE(nn.Module):
 # VQGAN from Taming Transformers paper
 # https://arxiv.org/abs/2012.09841
 
-
 class VQGanVAE1024(nn.Module):
     def __init__(self, vae_path=None, image_size=None):
         super().__init__()
@@ -169,18 +167,18 @@ class VQGanVAE1024(nn.Module):
         self.image_size = 256
         self.num_tokens = 1024
 
-        self._register_external_parameters()
+        # self._register_external_parameters()
 
-    def _register_external_parameters(self):
-        """Register external parameters for DeepSpeed partitioning."""
-        if (not distributed_utils.is_distributed
-                or not distributed_utils.using_backend(
-                    distributed_utils.DeepSpeedBackend)):
-            return
+    # def _register_external_parameters(self):
+    #     """Register external parameters for DeepSpeed partitioning."""
+    #     if (not distributed_utils.is_distributed
+    #             or not distributed_utils.using_backend(
+    #                 distributed_utils.DeepSpeedBackend)):
+    #         return
 
-        deepspeed = distributed_utils.backend.backend_module
-        deepspeed.zero.register_external_parameter(
-            self, self.model.quantize.embedding.weight)
+    #     deepspeed = distributed_utils.backend.backend_module
+    #     deepspeed.zero.register_external_parameter(
+    #         self, self.model.quantize.embedding.weight)
 
     @torch.no_grad()
     def get_codebook_indices(self, img):

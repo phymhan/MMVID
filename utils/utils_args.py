@@ -56,13 +56,12 @@ def get_args_train():
     parser.add_argument('--random_resize_crop_lower_ratio',
                         dest='resize_ratio',
                         type=float,
-                        default=0.75,
+                        default=1,
                         help='Random resized crop lower ratio')
     parser.add_argument('--which_tokenizer',
                         type=str,
                         default='simple',
                         help='(yttm | hug | simple | chinese)')
-    parser.add_argument('--taming', dest='taming', action='store_true')
     parser.add_argument('--bpe_path',
                         type=str,
                         help='path to your BPE json file')
@@ -136,9 +135,9 @@ def get_args_train():
                         default=1.0,
                         type=float,
                         help='Clip gradient norm')
-    parser.add_argument('--lr_decay', dest='lr_decay', action='store_true')
+    # parser.add_argument('--lr_decay', dest='lr_decay', action='store_true')
+    parser.add_argument('--no_lr_decay', action='store_true')
     parser.add_argument('--freeze_transformer', action='store_true')
-    parser.add_argument('--tensorboard', action='store_true')
     parser.add_argument('--use_html', action='store_true')
     parser.add_argument("--log_root",
                         type=str,
@@ -150,14 +149,14 @@ def get_args_train():
                         help="logging every # iters")
     parser.add_argument("--sample_every",
                         type=int,
-                        default=1000,
+                        default=5000,
                         help="sample every # iters")
     parser.add_argument('--n_sample',
                         default=4,
                         type=int,
                         help='Number of samples (text) to visualize')
     parser.add_argument('--n_per_sample',
-                        default=1,
+                        default=4,
                         type=int,
                         help='Number of images per text sample to visualize')
     parser.add_argument('--seed', default=42, type=int, help='Random seed')
@@ -169,10 +168,10 @@ def get_args_train():
                         default=None,
                         type=int,
                         help='start iter')
-    parser.add_argument('--epochs',
-                        default=100,
-                        type=int,
-                        help='Number of epochs')
+    # parser.add_argument('--epochs',
+    #                     default=100,
+    #                     type=int,
+    #                     help='Number of epochs')
     parser.add_argument("--limit_train_batches", type=float, default=1)
     parser.add_argument('--resume', action='store_true')
     parser.add_argument(
@@ -206,11 +205,11 @@ def get_args_train():
     parser.add_argument('--deterministic', action='store_true')
     parser.add_argument('--beta_msm', default=7.0, type=float)
     parser.add_argument('--beta_rel', default=0.5, type=float)
-    parser.add_argument('--beta_vid', default=0, type=float)
+    parser.add_argument('--beta_vid', default=0.5, type=float)
     parser.add_argument('--beta_gan', default=0, type=float)
     parser.add_argument('--which_fake', type=str, default='mask_predict')
     parser.add_argument('--frame_num', default=8, type=int)
-    parser.add_argument('--frame_step', default=8, type=int)
+    parser.add_argument('--frame_step', default=4, type=int)
     parser.add_argument('--estimate_real', action='store_true')
     parser.add_argument('--pnag_argmax', action='store_true')
     parser.add_argument('--pnag_dynamic', action='store_true')
@@ -219,7 +218,6 @@ def get_args_train():
     parser.add_argument('--negvc', action='store_true')
     parser.add_argument('--vc_mode', type=str, default=None)
     parser.add_argument('--attr_mode', type=str, default='object')
-    parser.add_argument('--n_accum_step', default=1, type=int)
     parser.add_argument('--dropout_vc',
                         type=float,
                         default=0.1,
@@ -256,7 +254,7 @@ def get_args_train():
 
     parser.add_argument('--dim', default=768, type=int, help='Model dimension')
     parser.add_argument('--text_seq_len',
-                        default=256,
+                        default=50,
                         type=int,
                         help='Text sequence length')
     parser.add_argument('--depth', default=2, type=int, help='Model depth')
@@ -418,9 +416,7 @@ def get_args_test():
     parser.add_argument('--ga_steps', default = 1, type = int, help = 'Number of steps to accumulate gradients across per each iteration. DeepSpeed only.')
     parser.add_argument('--learning_rate', default = 3e-4, type = float, help = 'Learning rate')
     parser.add_argument('--clip_grad_norm', default = 0.5, type = float, help = 'Clip gradient norm')
-    parser.add_argument('--lr_decay', dest = 'lr_decay', action = 'store_true')
     parser.add_argument('--freeze_transformer', action = 'store_true')
-    parser.add_argument('--tensorboard', action = 'store_true')
     parser.add_argument('--use_html', action = 'store_true')
     parser.add_argument("--log_root", type=str, help="where to save training logs", default='logs')
     parser.add_argument("--log_every", type=int, default=200, help="logging every # iters")
@@ -429,22 +425,14 @@ def get_args_test():
     parser.add_argument('--n_per_sample', default = 1, type = int, help = 'Number of images per text sample to visualize')
     parser.add_argument('--seed', default = 42, type = int, help = 'Random seed')
     parser.add_argument('--iters', default = 20, type = int, help = 'Number of iterations')
-    parser.add_argument('--epochs', default = 100, type = int, help = 'Number of epochs')
-    parser.add_argument("--limit_train_batches", type=float, default=1)
     parser.add_argument('--resume', action = 'store_true')
     parser.add_argument('--keep_n_checkpoints', default = None, type = int, help = '(Careful) Deletes old deepspeed checkpoints if there are more than n')
-    parser.add_argument('--optimizer', type=str, default='adam')
-    parser.add_argument('--lr_scheduler', type=str, default='reducelronplateau')
     parser.add_argument('--clip_ranking', action = 'store_true')
     parser.add_argument('--clip_path', type=str, default=None, help='path to your pretrained CLIP')
-    parser.add_argument('--lr_scheduler_every', default = 1, type = int, help = 'step lr scheduler every n steps')
-    parser.add_argument('--lr_scheduler_step_size', default = 10000, type = int, help = 'T_max or step_size')
-    parser.add_argument('--lr_scheduler_warmup', default = 5000, type = int, help = 'T_max or step_size')
-    parser.add_argument('--weight_decay', type = float, default = 0)
     parser.add_argument('--deterministic', action = 'store_true')
     parser.add_argument('--which_fake', type = str, default = 'mask_predict')
     parser.add_argument('--frame_num', default = 8, type = int)
-    parser.add_argument('--frame_step', default = 8, type = int)
+    parser.add_argument('--frame_step', default = 4, type = int)
     parser.add_argument('--estimate_real', action = 'store_true')
     parser.add_argument('--pnag_argmax', action = 'store_true')
     parser.add_argument('--pnag_dynamic', action = 'store_true')
@@ -466,15 +454,15 @@ def get_args_test():
     parser.add_argument('--use_pc', action = 'store_true')
     parser.add_argument('--pc_prob', type = float, default = 0, help = 'prob of preservation control')
 
-    parser.add_argument('--dim', default = 512, type = int, help = 'Model dimension')
-    parser.add_argument('--text_seq_len', default = 256, type = int, help = 'Text sequence length')
-    parser.add_argument('--depth', default = 2, type = int, help = 'Model depth')
+    parser.add_argument('--dim', default = 768, type = int, help = 'Model dimension')
+    parser.add_argument('--text_seq_len', default = 50, type = int, help = 'Text sequence length')
+    parser.add_argument('--depth', default = 24, type = int, help = 'Model depth')
     parser.add_argument('--heads', default = 8, type = int, help = 'Model number of heads')
     parser.add_argument('--dim_head', default = 64, type = int, help = 'Model head dimension')
     parser.add_argument('--reversible', dest = 'reversible', action='store_true')
     parser.add_argument('--loss_img_weight', default = 7, type = int, help = 'Image loss weight')
     parser.add_argument('--attn_types', default = 'full', type = str, help = 'comma separated list of attention types. attention type can be: full or sparse or axial_row or axial_col or conv_like.')
-    parser.add_argument('--pretrained_transformer', type=str, default='none')
+    parser.add_argument('--pretrained_transformer', type=str, default='openai_clip_visual')
     parser.add_argument('--image_size', default = None, type = int, help = 'force to use this size if set to > 0')
     parser.add_argument('--num_targets', default = 1, type = int, help = 'number of frames to generate')
     parser.add_argument('--num_visuals', default = 1, type = int, help = 'number of frames to generate')

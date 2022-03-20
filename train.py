@@ -177,6 +177,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # constants
 
     args.debug = False
+    args.lr_decay = not args.no_lr_decay
     args.truncate_captions = True
     args.num_visuals *= args.visual
 
@@ -256,8 +257,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.fixed_language_model is not None:
         tokenizer2, language_model, text_feature_dim, encode_text = get_fixed_language_model(
             args)
-        language_model = model_to_gpu(language_model, args.gpu,
-                                      True)  # TODO: false
+        language_model = model_to_gpu(language_model, args.gpu, True)
         tokenizer = None  # TODO: avoid tokenization and get raw text
     else:
         text_feature_dim = 0
@@ -578,7 +578,7 @@ def main_worker(gpu, ngpus_per_node, args):
             },
         )
 
-    cleanup()  # TODO
+    cleanup()
 
 
 if __name__ == "__main__":

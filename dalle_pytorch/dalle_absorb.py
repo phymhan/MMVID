@@ -656,39 +656,6 @@ class AbsorbingDiffusion(nn.Module):
             out = self.norm_by_max(out)
         return out
 
-    # @torch.no_grad()
-    # def sample_denoising(self, control_emb, argmax=False, dynamic=True, debug=False, steps=10, preserve=None, t_overlap=0, gamma='linear'):
-    #     # TODO: hardcode just in case
-    #     temp = 0.9
-    #     # print(f'num_timesteps: {self.num_timesteps}')
-    #     b, device = control_emb.shape[0], control_emb.device
-    #     control_seq_len = control_emb.shape[1]
-    #     x_t = torch.ones((b, self.target_seq_len), device=device).long() * self.mask_id
-    #     unmasked = torch.zeros_like(x_t, device=device).bool()
-    #     T = self.target_seq_len
-    #     # ts = np.arange(1, steps + 1) / steps * T
-    #     ts = np.arange(1, steps + 1)
-    #     fully_masked_emb = self.image_emb(x_t)
-    #     target_pos_emb = self.target_pos_emb(fully_masked_emb)
-    #     image_samples = []
-    #     for t in reversed(ts):
-    #         # print(f'Sample timestep {t:4d}', end='\r')
-    #         t = torch.full((b,), t, device=device, dtype=torch.long)
-    #         # where to unmask
-    #         changes = torch.rand(x_t.shape, device=device) < 1 / t.float().unsqueeze(-1)
-    #         # don't unmask somewhere already unmasked
-    #         changes = torch.bitwise_xor(changes, torch.bitwise_and(changes, unmasked))
-    #         # update mask with changes
-    #         unmasked = torch.bitwise_or(unmasked, changes)
-    #         x_t_emb = self.image_emb(x_t)
-    #         x_0_out = self.transformer_forward(torch.cat((control_emb, x_t_emb + target_pos_emb), dim = 1))
-    #         x_0_logits = self.to_logits(x_0_out[:,control_seq_len:,:])
-    #         # scale by temperature
-    #         x_0_logits = x_0_logits / temp
-    #         x_0_dist = dists.Categorical(logits=x_0_logits)
-    #         x_0_hat = x_0_dist.sample().long()
-    #         x_t[changes] = x_0_hat[changes]
-    #     return x_t, image_samples, None
     @torch.no_grad()
     def sample_denoising(self, control_emb, argmax=False, dynamic=True, debug=False, steps=10, preserve=None, t_overlap=0, gamma='linear'):
         def predict_from_logits(logits, argmax=False):
@@ -1504,19 +1471,6 @@ class AbsorbingDiffusion(nn.Module):
         if rel:
             # assert text_shape[0] >= 2 and text_shape[0] % 2 == 0  # for REL swapping
             control_swapped, frame_swapped = False, False
-            # if newmask:
-            #     p = np.random.uniform(*relvid_bernoulli_prob)  # prob of keep GT tok
-            #     mask2 = torch.bernoulli(torch.ones(batch_size, self.target_seq_len, device=device) * p) == 1
-            #     target_masked2 = torch.where(mask2, target, self.image_token_lut['[MASK]'])
-            #     target_emb_masked2 = self.image_emb(target_masked2)
-            #     control_emb_swap = swap(control_emb, 0)
-            #     tokens_pos_rel = torch.cat((control_emb, target_emb_masked2 + target_pos_emb), dim = 1)
-            #     tokens_neg_rel = torch.cat((control_emb_swap, target_emb_masked2 + target_pos_emb), dim = 1)
-            #     out_pos_rel = self.transformer_forward(tokens_pos_rel)
-            #     out_neg_rel = self.transformer_forward(tokens_neg_rel)
-            #     logits_pos_rel = self.to_logits_rel(out_pos_rel[:,self.rel_tok_index,:]).squeeze()
-            #     logits_neg_rel = self.to_logits_rel(out_neg_rel[:,self.rel_tok_index,:]).squeeze()
-            # else:
             if negvc:
                 tokens_neg_rel = torch.cat((control_neg_emb, target_emb_masked + target_pos_emb), dim = 1)
                 out_neg_rel = self.transformer_forward(tokens_neg_rel)
