@@ -24,7 +24,10 @@ This repo contains the code for training and testing, models, and data for MMVID
 
 ## VQGAN
 - [ ] TO DO: add training scripts for VQGAN models
-## Multi-Modal Vox-Celeb
+
+Code for finetuning VQGAN models is provided in [this repo](https://github.com/phymhan/taming-transformers).
+
+## Multimodal VoxCeleb
 
 - [ ] TO DO: add explanation
 - [x] TO DO: add evaluation scripts
@@ -157,8 +160,8 @@ All pretrained models are provided here in [checkpoint folder](https://drive.goo
 ### Multimodal VoxCeleb
 |     | Weight | FVD |
 | --- | :---: | :---: |
-| VQ-GAN (vae) | [ckpt](https://drive.google.com/file/d/1zaud_h46OUJWMKQtkpwaRvHw5I4_wdpg/view?usp=sharing) | - |
-| VQ-GAN (cvae) | [ckpt](https://drive.google.com/file/d/1XO_QKsI6H6c0ombHjnpMTwkW0M7f7nJv/view?usp=sharing) | - |
+| VQGAN (vae) | [ckpt](https://drive.google.com/file/d/1zaud_h46OUJWMKQtkpwaRvHw5I4_wdpg/view?usp=sharing) | - |
+| VQGAN (cvae) | [ckpt](https://drive.google.com/file/d/1XO_QKsI6H6c0ombHjnpMTwkW0M7f7nJv/view?usp=sharing) | - |
 | Text-to-Video | [pt](https://drive.google.com/file/d/1kBjpLn8Z11w6RqgsNFt1yWUrENb8S1dB/view?usp=sharing) | 59.46 |
 | Text-to-Video (ARTV) | [pt](https://drive.google.com/file/d/1enkF3aquQvi7qgGgk-45iQLjgMNs29Cl/view?usp=sharing) | 70.95 |
 | Text and Mask | [pt](https://drive.google.com/file/d/1EHLcQ4aZ3ZuUOgPvFcNKFzDdZKGTm5rb/view?usp=sharing) | - |
@@ -171,7 +174,7 @@ All pretrained models are provided here in [checkpoint folder](https://drive.goo
 ### iPER
 |     | Weight |
 | --- | :---: |
-| VQ-GAN | [ckpt](https://drive.google.com/file/d/1zTilqTh2qXovOLYrS2DGO_eeFU08uDxj/view?usp=sharing) |
+| VQGAN (vae) | [ckpt](https://drive.google.com/file/d/1zTilqTh2qXovOLYrS2DGO_eeFU08uDxj/view?usp=sharing) |
 | Text-to-Video | [pt](https://drive.google.com/file/d/1Y07JQRwZ5pA0EMbSKVU2LFwBf7RBTJSr/view?usp=sharing) |
 
 

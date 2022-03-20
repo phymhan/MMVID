@@ -1,4 +1,4 @@
-# Multi-Modal Vox-Celeb Dataset
+# Multimodal VoxCeleb Dataset
 
 This dataset is built on top of the [VoxCeleb1](https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html) dataset. We provide facial attribute annotations and additional segmentation masks and artistic drawings for each video.
 - Video: Videos are cropped with [video-preocessing](https://github.com/AliaksandrSiarohin/video-preprocessing).
