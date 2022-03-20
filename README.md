@@ -49,8 +49,8 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command.
     bash scripts/mmvoxceleb/text_and_mask/train.sh
   #### Testing:
     bash scripts/mmvoxceleb/text_and_mask/test.sh
-  #### For Quantitative Evaluation (FVD and PRD):
-    To Add
+  <!-- #### For Quantitative Evaluation (FVD and PRD):
+    To Add -->
 </details>
 
 <details>
@@ -60,8 +60,8 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command.
     bash scripts/mmvoxceleb/text_and_drawing/train.sh
   #### Testing:
     bash scripts/mmvoxceleb/text_and_drawing/test.sh
-  #### For Quantitative Evaluation (FVD and PRD):
-    To Add
+  <!-- #### For Quantitative Evaluation (FVD and PRD):
+    To Add -->
 </details>
 
 <details>
@@ -71,8 +71,8 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command.
     bash scripts/mmvoxceleb/drawing_and_mask/train.sh
   #### Testing:
     bash scripts/mmvoxceleb/drawing_and_mask/test.sh
-  #### For Quantitative Evaluation (FVD and PRD):
-    To Add
+  <!-- #### For Quantitative Evaluation (FVD and PRD):
+    To Add -->
 </details>
 
 <details>
@@ -82,8 +82,8 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command.
     bash scripts/mmvoxceleb/image_and_mask/train.sh
   #### Testing:
     bash scripts/mmvoxceleb/image_and_mask/test.sh
-  #### For Quantitative Evaluation (FVD and PRD):
-    To Add
+  <!-- #### For Quantitative Evaluation (FVD and PRD):
+    To Add -->
 </details>
 
 <details>
@@ -93,8 +93,8 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command.
     bash scripts/mmvoxceleb/image_and_mask/train.sh
   #### Testing:
     bash scripts/mmvoxceleb/image_and_mask/test.sh
-  #### For Quantitative Evaluation (FVD and PRD):
-    To Add
+  <!-- #### For Quantitative Evaluation (FVD and PRD):
+    To Add -->
 </details>
 
 <details>
@@ -104,14 +104,14 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command.
     bash scripts/mmvoxceleb/image_and_mask/train.sh
   #### Testing:
     bash scripts/mmvoxceleb/image_and_mask/test.sh
-  #### For Quantitative Evaluation (FVD and PRD):
-    To Add
+  <!-- #### For Quantitative Evaluation (FVD and PRD):
+    To Add -->
 </details>
 
 
 
 ## iPER
-- [ ] TO DO: add trainings scripts
+- [x] TO DO: add trainings scripts
 - [ ] TO DO: add more detailed explanation
 
 <details>
@@ -149,17 +149,37 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command.
 - [ ] TO DO: add more detailed explanation
 
 
-
-
 ## Pretrained Models
 - [ ] TO DO: explain the models in checkpoint folder, e.g., mm-voxceleb-model (link)
 
-[checkpoint folder](https://drive.google.com/drive/folders/1q_YdEBylrAWeuSleq6Jp58epE3KM-oXK?usp=sharing)
+All pretrained models are provided here in [checkpoint folder](https://drive.google.com/drive/folders/1q_YdEBylrAWeuSleq6Jp58epE3KM-oXK?usp=sharing).
 
-## Multi-Modal Vox-Celeb Dataset
+### Multimodal VoxCeleb
+|     | Weight | FVD |
+| --- | :---: | :---: |
+| VQ-GAN (vae) | [ckpt](https://drive.google.com/file/d/1zaud_h46OUJWMKQtkpwaRvHw5I4_wdpg/view?usp=sharing) | - |
+| VQ-GAN (cvae) | [ckpt](https://drive.google.com/file/d/1XO_QKsI6H6c0ombHjnpMTwkW0M7f7nJv/view?usp=sharing) | - |
+| Text-to-Video | [pt](https://drive.google.com/file/d/1kBjpLn8Z11w6RqgsNFt1yWUrENb8S1dB/view?usp=sharing) | 59.46 |
+| Text-to-Video (ARTV) | [pt](https://drive.google.com/file/d/1enkF3aquQvi7qgGgk-45iQLjgMNs29Cl/view?usp=sharing) | 70.95 |
+| Text and Mask | [pt](https://drive.google.com/file/d/1EHLcQ4aZ3ZuUOgPvFcNKFzDdZKGTm5rb/view?usp=sharing) | - |
+| Text and Drawing | [pt](https://drive.google.com/file/d/1-kcnX-NY4pX0SEV4It7404yWtG4fCrdr/view?usp=sharing) | - |
+| Drawing and Mask | [pt](https://drive.google.com/file/d/13lMHqVVHUfpVqM4edyc3dKeBSFfUKBuq/view?usp=sharing) | - |
+| Image and Mask | [pt](https://drive.google.com/file/d/1vcq8la7kpJFqdswfX_KuincRNI6o0h3C/view?usp=sharing) | - |
+| Text and Partial Image | [pt](https://drive.google.com/file/d/1wSBm9erN9VP58m3jRQnB_kBCrXW-RGSg/view?usp=sharing) | - |
+| Image and Video | [pt](https://drive.google.com/file/d/1LGYA9i5KRA1L-5DlM9Bubbo9PiH2RqfG/view?usp=sharing) | - |
+
+### iPER
+|     | Weight |
+| --- | :---: |
+| VQ-GAN | [ckpt](https://drive.google.com/file/d/1zTilqTh2qXovOLYrS2DGO_eeFU08uDxj/view?usp=sharing) |
+| Text-to-Video | [pt](https://drive.google.com/file/d/1Y07JQRwZ5pA0EMbSKVU2LFwBf7RBTJSr/view?usp=sharing) |
+
+
+## Multimodal VoxCeleb Dataset
 - [ ] TO DO: add detailed explanation for the dataset
 
-[Dataset](mm_vox_celeb/README.md)
+[**Multimodal VoxCeleb Dataset**](mm_vox_celeb/README.md) has a total of $19,522$ videos with $3,437$ various interview situations ($453$ people). Please see details about how to prepare the dataset in `mm_vox_celeb/README.md`. Preprocessed data is also available [here](https://drive.google.com/drive/folders/18ebgGGTw0610_SRxiu5M3mdJCZqa-O74?usp=sharing).
+
 
 ## Acknowledgement
 This code is heavily based on [DALLE-PyTorch](https://github.com/lucidrains/DALLE-pytorch). The authors thank everyone who makes their code and models available.

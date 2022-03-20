@@ -23,8 +23,9 @@ import torchvision
 from utils import utils
 from utils import utils_html
 from utils.utils_train import get_dataset, get_fixed_language_model, \
-    get_text_feature_extractor, clip_encode_image, save_model, prepare_lr_scheduler, \
-    get_optimizer, get_vae_model, get_tokenizer
+    get_text_feature_extractor, clip_encode_image, save_model, \
+    prepare_lr_scheduler, dummy_lr_scheduler_step, get_optimizer, \
+    get_vae_model, get_tokenizer
 from utils.utils_train import visualize_train as visualize
 
 
@@ -249,8 +250,7 @@ def main_worker(gpu, ngpus_per_node, args):
     LOG_WEB_DIR = LOG_DIR / 'web'
     webpage = None
     if USE_HTML and is_root_worker():
-        webpage = utils_html.initialize_webpage(LOG_WEB_DIR,
-                                                'DALLE: ' + args.name, RESUME)
+        webpage = utils_html.initialize_webpage(LOG_WEB_DIR, 'DALLE: ' + args.name, False)
 
     # tokenizer
 
@@ -345,24 +345,8 @@ def main_worker(gpu, ngpus_per_node, args):
     if optim_weights is not None:
         opt.load_state_dict(optim_weights)
 
-    ####################################################
-    if args.dalle_path2 is not None:
-        assert exists(args.dalle_path2), 'DALLE model file does not exist'
-        args.dalle_path2 = Path(args.dalle_path2)
-        ckpt = torch.load(str(args.dalle_path2))
-        weights = {}
-        model_weights2 = ckpt['weights']
-        for m in model_weights2.keys():
-            if not m.startswith('transformer'):
-                pass
-            else:
-                weights[m] = model_weights2[m]
-        dalle.load_state_dict(weights, strict=False)
-        # del weights
-    ####################################################
-
-    dalle = model_to_gpu(dalle, args.gpu, True)  # TODO
-    dalle_module = dalle.module  # TODO
+    dalle = model_to_gpu(dalle, args.gpu, True)
+    dalle_module = dalle.module
     # dist.barrier()
 
     scheduler, scheduler_step = None, dummy_lr_scheduler_step
@@ -371,7 +355,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # create dataset and dataloader
 
-    args.is_shuffle = True  # TODO
+    args.is_shuffle = True
 
     ds = get_dataset(args, tokenizer)
     assert len(ds) > 0, 'dataset is empty'
@@ -453,7 +437,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if args.fixed_language_model is not None:
             text_description = text
-            # text = encode_text(text_description)
             with torch.no_grad():
                 encoded_input = tokenizer2(
                     text_description,

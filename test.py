@@ -1,41 +1,25 @@
 import os
-import sys
+# import sys
 import shutil
-import argparse
+# import argparse
 from pathlib import Path
-import pickle
+# import pickle
 from tqdm import tqdm
-from glob import glob
-import time
 import natsort
-import warnings
-import numpy as np
-import random
 import pdb
 st = pdb.set_trace
 
 import torch
-from torch import functional
-from torch.cuda import get_gencode_flags
-from torch.nn.utils import clip_grad_norm_
-from torch.optim import Adam
 from torch.utils.data import DataLoader
-import torchvision
-import torch.nn.functional as F
-import torch.multiprocessing as mp
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn as nn
-from datetime import datetime
-import imageio
-from einops import rearrange
 
 from utils import utils
 from utils import utils_html
 from utils.utils_train import get_dataset, get_fixed_language_model, \
-    get_text_feature_extractor, clip_encode_image, save_model, prepare_lr_scheduler, \
     get_vae_model, get_tokenizer
 from utils.utils_train import visualize_test as visualize
+from utils.utils_train import visualize_long
 from utils.utils_eval import evaluate, evaluate_clip
 
 # helpers
