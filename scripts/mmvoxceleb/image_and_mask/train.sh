@@ -1,5 +1,5 @@
 python3 train.py --name train_vox_image+mask \
-    --image_text_folder data/vox-celeba-alex_v2 --dataset vox \
+    --image_text_folder data/mmvoxceleb --dataset vox \
     --attr_mode image+mask2 --visual --vc_mode mask2_8x8 \
     --num_visuals 2 --fullvc --batch_size 20 --text_seq_len 20 \
     --use_html --log_every 200 --sample_every 5000 --n_sample 4 --n_per_sample 4 \

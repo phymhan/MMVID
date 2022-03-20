@@ -1,5 +1,5 @@
 python3 train.py --name train_vox_text+draw \
-    --image_text_folder data/vox-celeba-alex_v2 \
+    --image_text_folder data/mmvoxceleb \
     --dataset vox --attr_mode draw+text_dropout --visual --vc_mode mask_8x8 \
     --num_visuals 1 --fullvc --batch_size 20 --text_seq_len 50 \
     --iters 200000 --use_html --log_every 200 \

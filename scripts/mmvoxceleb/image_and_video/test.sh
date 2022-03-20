@@ -1,5 +1,5 @@
 python3 test.py --name test_vox_image+video \
-    --image_text_folder data/vox-celeba-alex_v2 \
+    --image_text_folder data/mmvoxceleb \
     --dataset vox --attr_mode image+video33 --visual \
     --vc_mode face2_8x8 --num_visuals 4 --fullvc --text_seq_len 20 \
     --use_html --num_targets 8 --frame_num 8 \

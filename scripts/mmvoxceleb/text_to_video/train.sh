@@ -1,5 +1,5 @@
 python3 train.py --name train_vox_text \
-    --image_text_folder data/vox-celeba-alex_v2 \
+    --image_text_folder data/mmvoxceleb \
     --dataset video_text --batch_size 48 \
     --text_seq_len 50 \
     --use_html --log_every 200 --sample_every 5000 \

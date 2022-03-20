@@ -1,5 +1,5 @@
 python3 test.py --name test_vox_text \
-    --image_text_folder data/vox-celeba-alex_v2 \
+    --image_text_folder data/mmvoxceleb \
     --dataset video_text --text_seq_len 50 \
     --use_html \
     --num_visuals 0 --num_targets 8 --frame_num 8 \

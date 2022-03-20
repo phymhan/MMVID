@@ -169,6 +169,8 @@ This code is heavily based on [DALLE-PyTorch](https://github.com/lucidrains/DALL
 - [Precision Recall Distribution](https://github.com/msmsajjadi/precision-recall-distributions)
 - [Frechet Video Distance](https://github.com/google-research/google-research/tree/master/frechet_video_distance)
 - [Facenet-PyTorch](https://github.com/timesler/facenet-pytorch)
+- [Face Parsing](https://github.com/zllrunning/face-parsing.PyTorch)
+- [Unpaired Portrait Drawing](https://github.com/yiranran/Unpaired-Portrait-Drawing)
 
 
 ## Citation

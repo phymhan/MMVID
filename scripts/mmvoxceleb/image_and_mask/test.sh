@@ -1,5 +1,5 @@
 python3 test.py --name test_vox_image+mask \
-    --image_text_folder data/vox-celeba-alex_v2 --dataset vox \
+    --image_text_folder data/mmvoxceleb --dataset vox \
     --attr_mode image+mask2 --visual --vc_mode mask2_8x8 --num_visuals 2 \
     --fullvc --text_seq_len 20 \
     --use_html --num_targets 8 --frame_num 8 --frame_step 4 \
