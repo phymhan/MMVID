@@ -507,7 +507,7 @@ def get_args_test():
     parser.add_argument('--eval_image_folder', action='store_true')
     parser.add_argument('--visual_aug_mode', type = str, default = None)
 
-    parser.add_argument('--rep_num', default = 1, type = int)
+    # parser.add_argument('--rep_num', default = 1, type = int)
     parser.add_argument('--t_overlap', default = 1, type = int)
     parser.add_argument('--t_repeat', default = 10, type = int)
     parser.add_argument('--use_cvae', action='store_true')

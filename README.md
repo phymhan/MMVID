@@ -27,7 +27,9 @@ This repo contains the code for training and testing, models, and data for MMVID
 ## Multi-Modal Vox-Celeb
 
 - [ ] TO DO: add explanation
-- [ ] TO DO: add evaluation scripts
+- [x] TO DO: add evaluation scripts
+
+For quantitative evaluation, append `--eval_mode eval` to each testing command.
 
 <details>
   <summary>Text-to-Video</summary>
