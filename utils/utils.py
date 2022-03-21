@@ -70,8 +70,7 @@ def print_args(parser, args):
         if os.getenv('CUDA_VISIBLE_DEVICES'):
             f.write('CUDA_VISIBLE_DEVICES=%s ' %
                     os.getenv('CUDA_VISIBLE_DEVICES'))
-        f.write(
-            'deepspeed ' if getattr(args, 'deepspeed', False) else 'python3 ')
+        f.write('python3 ')
         f.write(' '.join(sys.argv))
         f.write('\n\n')
 
