@@ -103,9 +103,10 @@ def reduce_loss(loss):  # TODO
 def main():
 
     # argument parsing
-    from utils.utils_args import get_args_train
+    from utils.utils_args import get_args_train, process_args
     args, _ = get_args_train()
-
+    args = process_args(args)
+    
     args.multiprocessing_distributed = True  # TODO: always use multiprocessing_distributed
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
     args.world_batch_size = args.batch_size
@@ -234,7 +235,7 @@ def main_worker(gpu, ngpus_per_node, args):
         dim_head=args.dim_head,
         reversible=args.reversible,
         loss_img_weight=args.loss_img_weight,
-        attn_types=tuple(args.attn_types.split(',')),
+        attn_types=args.attn_types,
         text_feature_dim=text_feature_dim,
         fixed_language_model=args.fixed_language_model,
         text_emb_bottleneck=args.text_emb_bottleneck,

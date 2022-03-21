@@ -1,26 +1,5 @@
 import argparse
-from pathlib import Path
-import os
-import shutil
-import random
-
-from datetime import datetime
 import numpy as np
-import natsort
-from tqdm import tqdm
-import pdb
-
-st = pdb.set_trace
-
-import torch
-from torch.nn.utils import clip_grad_norm_
-from torch.utils.data import DataLoader
-import torch.nn.functional as F
-import torch.nn as nn
-from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.multiprocessing as mp
-import torch.distributed as dist
-import torchvision
 
 
 def get_args_train():
@@ -733,6 +712,10 @@ def get_args_test():
 
     args = parser.parse_args()
 
+    return args, parser
+
+
+def process_args(args):
     # Mask-Predict hyperparameters
     mp_config = {
         'T1_n': args.mp_T1n,
@@ -779,8 +762,10 @@ def get_args_test():
     args.vid_strategy_prob = vid_strategy_prob
 
     args.msm_bernoulli_prob = list(
-                map(float, args.msm_bernoulli_prob.split(',')))
-    
+        map(float, args.msm_bernoulli_prob.split(',')))
+
     args.relvid_bernoulli_prob = list(
-                map(float, args.relvid_bernoulli_prob.split(',')))
-    return args, parser
+        map(float, args.relvid_bernoulli_prob.split(',')))
+
+    args.attn_types = tuple(args.attn_types.split(','))
+    return args

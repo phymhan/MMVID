@@ -7,6 +7,7 @@ from pathlib import Path
 from tqdm import tqdm
 import natsort
 import pdb
+
 st = pdb.set_trace
 
 import torch
@@ -24,15 +25,19 @@ from utils.utils_eval import evaluate, evaluate_clip
 
 # helpers
 
+
 def exists(val):
     return val is not None
+
 
 def get_trainable_params(model):
     return [params for params in model.parameters() if params.requires_grad]
 
+
 def set_requires_grad(model, value):
     for param in model.parameters():
         param.requires_grad = value
+
 
 def group_weight(model):
     group_decay, group_no_decay = [], []
@@ -43,9 +48,14 @@ def group_weight(model):
                 continue
         group_decay.append(params[1])
 
-    assert len(list(model.parameters())) == len(group_decay) + len(group_no_decay)
-    groups = [dict(params=group_decay), dict(params=group_no_decay, weight_decay=.0)]
+    assert len(list(
+        model.parameters())) == len(group_decay) + len(group_no_decay)
+    groups = [
+        dict(params=group_decay),
+        dict(params=group_no_decay, weight_decay=.0)
+    ]
     return groups
+
 
 def sample_data(loader, sampler=None):
     epoch = -1
@@ -56,9 +66,11 @@ def sample_data(loader, sampler=None):
         for batch in loader:
             yield batch
 
+
 def requires_grad(model, flag=True):
     for p in model.parameters():
         p.requires_grad = flag
+
 
 def model_to_gpu(model, gpu, is_train):
     model.cuda()
@@ -66,15 +78,21 @@ def model_to_gpu(model, gpu, is_train):
 
     return model
 
+
 def cleanup():
     dist.destroy_process_group()
 
+
 # reconstitute vae and dalle params
 
+
 def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+    token_embeddings = model_output[
+        0]  #First element of model_output contains all token embeddings
+    input_mask_expanded = attention_mask.unsqueeze(-1).expand(
+        token_embeddings.size()).float()
+    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
+        input_mask_expanded.sum(1), min=1e-9)
 
 
 def main():
@@ -93,6 +111,7 @@ def main():
         args,
     )
 
+
 @torch.no_grad()
 def main_worker(gpu, ngpus_per_node, args):
     args.gpu = gpu
@@ -101,7 +120,8 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
 
-    assert Path(args.image_text_folder).exists(), f'The path {args.image_text_folder} was not found.'
+    assert Path(args.image_text_folder).exists(
+    ), f'The path {args.image_text_folder} was not found.'
 
     def is_root_worker():
         return True
@@ -156,9 +176,12 @@ def main_worker(gpu, ngpus_per_node, args):
         pass
     else:
         if args.dalle_path is None:
-            checkpoints = natsort.natsorted(os.listdir(str(Path(args.log_root) / args.name / 'weights')))
+            checkpoints = natsort.natsorted(
+                os.listdir(str(Path(args.log_root) / args.name / 'weights')))
             assert len(checkpoints) > 0, f'Nothing to resume from.'
-            DALLE_PATH = Path(args.log_root) / args.name / 'weights' / checkpoints[-1] / 'dalle.pt'
+            DALLE_PATH = Path(
+                args.log_root
+            ) / args.name / 'weights' / checkpoints[-1] / 'dalle.pt'
     args.dalle_path = DALLE_PATH
 
     args.name += args.name_suffix  # TODO: remove this
@@ -169,7 +192,7 @@ def main_worker(gpu, ngpus_per_node, args):
     args.log_dir = LOG_DIR
     args.log_sample_dir = LOG_SAMPLE_DIR
 
-    assert args.dalle_path 
+    assert args.dalle_path
     which_ckpt = str(DALLE_PATH).split('/')[-2]
 
     args.log_metric_dir = LOG_DIR / 'metrics' / which_ckpt
@@ -181,29 +204,34 @@ def main_worker(gpu, ngpus_per_node, args):
         os.makedirs(LOG_DIR / 'weights', exist_ok=True)
         utils.print_args(None, args)
         if args.ar:
-            shutil.copyfile('dalle_pytorch/dalle_artv.py', LOG_DIR / 'dalle_artv.py.txt')
+            shutil.copyfile('dalle_pytorch/dalle_artv.py',
+                            LOG_DIR / 'dalle_artv.py.txt')
         elif args.dm:
-            shutil.copyfile('dalle_pytorch/dalle_absorb.py', LOG_DIR / 'dalle_absorb.py.txt')
+            shutil.copyfile('dalle_pytorch/dalle_absorb.py',
+                            LOG_DIR / 'dalle_absorb.py.txt')
         else:
-            shutil.copyfile('dalle_pytorch/dalle_bert.py', LOG_DIR / 'dalle_bert.py.txt')
+            shutil.copyfile('dalle_pytorch/dalle_bert.py',
+                            LOG_DIR / 'dalle_bert.py.txt')
 
     USE_HTML = args.use_html
     LOG_WEB_DIR = LOG_DIR / 'web'
     webpage = None
     if USE_HTML and is_root_worker():
-        webpage = utils_html.initialize_webpage(LOG_WEB_DIR, 'DALLE: ' + args.name, RESUME)
+        webpage = utils_html.initialize_webpage(LOG_WEB_DIR,
+                                                'DALLE: ' + args.name, RESUME)
 
     # tokenizer
 
     if args.fixed_language_model is not None:
-        tokenizer2, language_model, text_feature_dim, encode_text = get_fixed_language_model(args)
+        tokenizer2, language_model, text_feature_dim, encode_text = get_fixed_language_model(
+            args)
         language_model = language_model.cuda()
         tokenizer = None  # TODO: avoid tokenization and get raw text
     else:
         language_model, tokenizer2 = None, None
         text_feature_dim = 0
         tokenizer = get_tokenizer(args)
-    
+
     # model path
 
     if args.vae_path == '':
@@ -220,20 +248,16 @@ def main_worker(gpu, ngpus_per_node, args):
 
     vae = None
     if not args.eval_image_folder:
-        vae, vae_params = get_vae_model(
-            args.which_vae,
-            vae_path=args.vae_path,
-            image_size=args.image_size
-        )
+        vae, vae_params = get_vae_model(args.which_vae,
+                                        vae_path=args.vae_path,
+                                        image_size=args.image_size)
 
     cvae = None
     if not args.eval_image_folder:
         if args.use_cvae:
-            cvae, cvae_params = get_vae_model(
-                args.which_vae,
-                vae_path=args.cvae_path,
-                image_size=args.image_size
-            )
+            cvae, cvae_params = get_vae_model(args.which_vae,
+                                              vae_path=args.cvae_path,
+                                              image_size=args.image_size)
 
     dalle_params = dict(
         num_text_tokens=tokenizer.vocab_size if tokenizer else 0,
@@ -306,7 +330,7 @@ def main_worker(gpu, ngpus_per_node, args):
     dl = DataLoader(
         ds,
         batch_size=args.batch_size,
-        shuffle=False,#(data_sampler is None),
+        shuffle=False,  #(data_sampler is None),
         drop_last=True,
         sampler=data_sampler,
         num_workers=0,
@@ -353,10 +377,13 @@ def main_worker(gpu, ngpus_per_node, args):
                 upper_bound=True,
             )
         exit(0)
-    
+
     pbar = range(args.iters)  # TODO
     if is_root_worker():
-        pbar = tqdm(pbar, initial=START_ITER, dynamic_ncols=True, smoothing=0.01)
+        pbar = tqdm(pbar,
+                    initial=START_ITER,
+                    dynamic_ncols=True,
+                    smoothing=0.01)
 
     for idx in pbar:
         i = idx + START_ITER
@@ -369,7 +396,8 @@ def main_worker(gpu, ngpus_per_node, args):
         text_neg, visuals_neg = None, None
         if args.negvc:
             text, frames, visuals, visuals_neg, text_neg = next(dl_iter)
-            visuals_neg, text_neg = map(lambda t: t.cuda(), (visuals_neg, text_neg))
+            visuals_neg, text_neg = map(lambda t: t.cuda(),
+                                        (visuals_neg, text_neg))
         else:
             text, frames, visuals = next(dl_iter)  # frames [B, T, C, H, W]
         if args.visual and len(visuals.shape) == 4:
@@ -396,7 +424,8 @@ def main_worker(gpu, ngpus_per_node, args):
                     'attention_mask': encoded_input['attention_mask'].cuda(),
                 }
                 model_output = language_model(**encoded_input)
-                text = mean_pooling(model_output, encoded_input['attention_mask'])
+                text = mean_pooling(model_output,
+                                    encoded_input['attention_mask'])
         else:
             text = text.cuda()
             text_description = None
@@ -441,6 +470,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 language_model,
             )
         # ========================================================
+
 
 if __name__ == "__main__":
     main()
