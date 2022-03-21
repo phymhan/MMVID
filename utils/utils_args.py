@@ -751,15 +751,17 @@ def process_args(args):
     if args.dm:
         args.debug = False
 
-    msm_strategy_prob = np.array(
-        list(map(float, args.msm_strategy_prob.split(','))))
-    msm_strategy_prob /= msm_strategy_prob.sum()
-    args.msm_strategy_prob = msm_strategy_prob
+    if args.msm_strategy_prob is not None:
+        msm_strategy_prob = np.array(
+            list(map(float, args.msm_strategy_prob.split(','))))
+        msm_strategy_prob /= msm_strategy_prob.sum()
+        args.msm_strategy_prob = msm_strategy_prob
 
-    vid_strategy_prob = np.array(
-        list(map(float, args.vid_strategy_prob.split(','))))
-    vid_strategy_prob /= vid_strategy_prob.sum()
-    args.vid_strategy_prob = vid_strategy_prob
+    if args.vid_strategy_prob is not None:
+        vid_strategy_prob = np.array(
+            list(map(float, args.vid_strategy_prob.split(','))))
+        vid_strategy_prob /= vid_strategy_prob.sum()
+        args.vid_strategy_prob = vid_strategy_prob
 
     args.msm_bernoulli_prob = list(
         map(float, args.msm_bernoulli_prob.split(',')))
