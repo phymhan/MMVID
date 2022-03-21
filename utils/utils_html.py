@@ -1,20 +1,18 @@
 """
-copied from https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/util/html.py
+copied modified from https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/util/html.py
 """
-import dominate
-from dominate.tags import meta, h1, h2, h3, table, tr, td, p, a, img, br
 import os
 from pathlib import Path
-import torchvision
-import torch
+
 import imageio
 import numpy as np
 import pickle
+
+import dominate
+from dominate.tags import meta, h1, h3, table, tr, td, p, a, img, br
+import torchvision
+import torch
 from torchvision.io import write_video
-
-import pdb
-
-st = pdb.set_trace
 
 
 class HTML:
@@ -145,14 +143,7 @@ class HTML:
             f.write(self.doc.render())
 
 
-""" helpers
-"""
-
-
 def initialize_webpage(web_dir, name='dalle', resume=False, reverse=True):
-    # web_dir = Path(web_dir)
-    # os.makedirs(web_dir, exist_ok=True)
-    # os.makedirs(web_dir / 'images', exist_ok=True)
     webpage = HTML(web_dir,
                    name,
                    resume=resume,
@@ -208,29 +199,16 @@ def save_grid(webpage=None,
               video_format='gif'):
     """assuming each row contains multiple samples of one text, if nrow == 1 save all samples in a row"""
     img_dir = Path(webpage.get_image_dir())
-
-    # assert tensor.ndim == 4, '`tensor` should be a 4-D tensor'
-    # tensor = tensor.detach().cpu()
-
     if isinstance(nrow, list):
         n_per_row = nrow
     else:
         n_per_row = [nrow] * (len(tensor) // nrow)
     n_row = len(n_per_row)
-    # assert sum(n_per_row) == len(tensor)
-
-    # n_img = tensor.shape[0]
-    # n_img = len(tensor)
-    # n_txt = n_img // nrow
-
-    # if nrow > 1 and len(caption) == n_txt:
-    #     caption = np.repeat(caption, nrow)
 
     imgs = []
     cumsum = np.cumsum([0] + n_per_row)
     for i in range(n_row):
         for j in range(n_per_row[i]):
-            # idx = i * nrow + j
             idx = cumsum[i] + j
             img_name = save_image_tensor(
                 tensor[idx].detach().cpu(),
@@ -243,8 +221,6 @@ def save_grid(webpage=None,
         webpage.add_images(imgs, caption, imgs, width=width)
     else:
         for i in range(n_row):
-            # imgs_row = imgs[i*nrow:(i+1)*nrow]
-            # txts_row = caption[i*nrow:(i+1)*nrow]
             imgs_row = imgs[cumsum[i]:cumsum[i + 1]]
             txts_row = caption[cumsum[i]:cumsum[i + 1]]
             webpage.add_images(imgs_row, txts_row, imgs_row, width=width)
@@ -252,7 +228,8 @@ def save_grid(webpage=None,
     webpage.save()
 
 
-if __name__ == '__main__':  # we show an example usage here.
+if __name__ == '__main__':
+    # An example usage
     html = HTML('web/', 'test_html')
     html.add_header('hello world')
 
