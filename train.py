@@ -103,10 +103,9 @@ def reduce_loss(loss):  # TODO
 def main():
 
     # argument parsing
-    from utils.utils_args import get_args_train, process_args
-    args, _ = get_args_train()
-    args = process_args(args)
-    
+    from utils.utils_args import process_args
+    args = process_args(train=True)
+
     args.multiprocessing_distributed = True  # TODO: always use multiprocessing_distributed
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
     args.world_batch_size = args.batch_size

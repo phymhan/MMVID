@@ -90,8 +90,8 @@ def mean_pooling(model_output, attention_mask):
 def main():
     # argument parsing
 
-    from utils.utils_args import get_args_test
-    args, parser = get_args_test()
+    from utils.utils_args import process_args
+    args = process_args()
 
     args.multiprocessing_distributed = True  # TODO: always use multiprocessing_distributed
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed

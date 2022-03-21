@@ -715,7 +715,11 @@ def get_args_test():
     return args, parser
 
 
-def process_args(args):
+def process_args(train=False):
+    if train:
+        args, _ = get_args_train()
+    else:
+        args, _ = get_args_test()
     # Mask-Predict hyperparameters
     mp_config = {
         'T1_n': args.mp_T1n,
