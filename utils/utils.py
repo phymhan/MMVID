@@ -1,23 +1,17 @@
 import os
 import sys
-import ast
-import math
-import torch
-import shutil
-import random
-import numpy as np
-from torchvision.io import write_video
-from torchvision import utils
-from torch.nn import functional as F
-import torch.nn as nn
 import argparse
 from pathlib import Path
 from copy import deepcopy
-# import matplotlib.pyplot as plt
 from datetime import datetime
-import pdb
+import shutil
+import random
 
-st = pdb.set_trace
+import numpy as np
+
+import torch
+from torchvision.io import write_video
+from torchvision import utils
 
 
 class Config:
@@ -34,7 +28,6 @@ def seed_everything(seed=42):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
-    # torch.backends.cudnn.benchmark = False  # conflict with DDP
 
 
 # borrowed from: https://stackoverflow.com/questions/715417/converting-from-a-string-to-boolean-in-python
