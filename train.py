@@ -1,35 +1,26 @@
-import argparse
 from pathlib import Path
 import os
 import shutil
 import random
 
 from datetime import datetime
-import numpy as np
 from tqdm import tqdm
-import pdb
-st = pdb.set_trace
 
 import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
 import torch.distributed as dist
-import torchvision
 
 from utils import utils
 from utils import utils_html
-from utils.utils_train import get_dataset, get_fixed_language_model, \
-    get_text_feature_extractor, clip_encode_image, save_model, \
+from utils.utils_train import get_dataset, get_fixed_language_model, save_model, \
     prepare_lr_scheduler, dummy_lr_scheduler_step, get_optimizer, \
     get_vae_model, get_tokenizer
 from utils.utils_train import visualize_train as visualize
 
-
-# helpers
 
 def exists(val):
     return val is not None
@@ -96,11 +87,9 @@ def cleanup():
     dist.destroy_process_group()
 
 
-# reconstitute vae and dalle params
-
 def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[
-        0]  #First element of model_output contains all token embeddings
+    # First element of model_output contains all token embeddings
+    token_embeddings = model_output[0]
     input_mask_expanded = attention_mask.unsqueeze(-1).expand(
         token_embeddings.size()).float()
     return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
@@ -112,10 +101,10 @@ def reduce_loss(loss):  # TODO
 
 
 def main():
-    # argument parsing
 
+    # argument parsing
     from utils.utils_args import get_args_train
-    args, parser = get_args_train()
+    args, _ = get_args_train()
 
     args.multiprocessing_distributed = True  # TODO: always use multiprocessing_distributed
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
@@ -175,85 +164,34 @@ def main_worker(gpu, ngpus_per_node, args):
                 or (args.multiprocessing_distributed
                     and args.rank % ngpus_per_node == 0))
 
-    # constants
-
-    args.debug = False
-    args.lr_decay = not args.no_lr_decay
-    args.truncate_captions = True
-    args.num_visuals *= args.visual
-
-    if args.ar:
-        args.debug = False
-        args.mask_predict_steps = [0]
-        args.mask_predict_steps1 = 0
-        args.num_visuals = max(1, args.num_visuals)
-    if args.dm:
-        args.debug = False
-
-    # Mask-Predict hyperparameters
-    mp_config = {
-        'T1_n': args.mp_T1n,
-        'T2_n': args.mp_T2n,
-        'T3_n': args.mp_T3n,
-        'N1_n': args.mp_N1n,
-        'N2_n': args.mp_N2n,
-        'N3_n': args.mp_N3n,
-        'N4_n': args.mp_N4n,
-        'T1_t': args.mp_T1t,
-        'T2_t': args.mp_T2t,
-        'T3_t': args.mp_T3t,
-        'N1_t': args.mp_N1t,
-        'N2_t': args.mp_N2t,
-        'N3_t': args.mp_N3t,
-        'N4_t': args.mp_N4t,
-        'T': args.mp_T,
-        'B': args.mp_B,
-    }
-    args.mp_config = mp_config
-
-    GRAD_CLIP_NORM = args.clip_grad_norm
-    ATTN_TYPES = tuple(args.attn_types.split(','))
-    MSM_STRATEGY_PROB = np.array(
-        list(map(float, args.msm_strategy_prob.split(','))))
-    MSM_STRATEGY_PROB /= MSM_STRATEGY_PROB.sum()
-    MSM_BERNOULLI_PROB = list(map(float, args.msm_bernoulli_prob.split(',')))
-    RELVID_BERNOULLI_PROB = list(
-        map(float, args.relvid_bernoulli_prob.split(',')))
-    VID_STRATEGY_PROB = np.array(
-        list(map(float, args.vid_strategy_prob.split(','))))
-    VID_STRATEGY_PROB /= VID_STRATEGY_PROB.sum()
-
     # logging
-
-    LOG_DIR = Path(args.log_root) / args.name
-    LOG_FILE_NAME = LOG_DIR / 'log.txt'
-    args.log_dir = LOG_DIR
-    args.log_sample_dir = LOG_DIR / 'samples'
-    CKPT_DIR = LOG_DIR / 'weights'
+    log_dir = Path(args.log_root) / args.name
+    log_file_name = log_dir / 'log.txt'
+    args.log_dir = log_dir
+    args.log_sample_dir = log_dir / 'samples'
+    ckpt_dir = log_dir / 'weights'
 
     if is_root_worker():
-        os.makedirs(LOG_DIR, exist_ok=True)
-        os.makedirs(LOG_DIR / 'samples', exist_ok=True)
-        os.makedirs(LOG_DIR / 'weights', exist_ok=True)
+        os.makedirs(log_dir, exist_ok=True)
+        os.makedirs(log_dir / 'samples', exist_ok=True)
+        os.makedirs(log_dir / 'weights', exist_ok=True)
         utils.print_args(None, args)
         if args.ar:
             shutil.copyfile('dalle_pytorch/dalle_artv.py',
-                            LOG_DIR / 'dalle_artv.py.txt')
+                            log_dir / 'dalle_artv.py.txt')
         elif args.dm:
             shutil.copyfile('dalle_pytorch/dalle_absorb.py',
-                            LOG_DIR / 'dalle_absorb.py.txt')
+                            log_dir / 'dalle_absorb.py.txt')
         else:
             shutil.copyfile('dalle_pytorch/dalle_bert.py',
-                            LOG_DIR / 'dalle_bert.py.txt')
+                            log_dir / 'dalle_bert.py.txt')
 
-    USE_HTML = args.use_html
-    LOG_WEB_DIR = LOG_DIR / 'web'
     webpage = None
-    if USE_HTML and is_root_worker():
-        webpage = utils_html.initialize_webpage(LOG_WEB_DIR, 'DALLE: ' + args.name, False)
+    if args.use_html and is_root_worker():
+        webpage = utils_html.initialize_webpage(log_dir / 'web',
+                                                'DALLE: ' + args.name, False)
 
     # tokenizer
-
     if args.fixed_language_model is not None:
         tokenizer2, language_model, text_feature_dim, encode_text = get_fixed_language_model(
             args)
@@ -264,15 +202,13 @@ def main_worker(gpu, ngpus_per_node, args):
         tokenizer = get_tokenizer(args)
 
     # model path
-
     args.use_cvae = args.cvae_path is not None
-    DALLE_PATH = Path(args.dalle_path) if exists(args.dalle_path) else None
+    dalle_path = Path(args.dalle_path) if exists(args.dalle_path) else None
 
     model_weights, optim_weights = None, None
-    START_ITER = args.start_iter or 0
+    start_iter = args.start_iter or 0
 
     # get vae model
-
     vae, vae_params = get_vae_model(
         args.which_vae,
         vae_path=args.vae_path,
@@ -282,7 +218,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     cvae = None
     if args.cvae_path is not None:
-        cvae, cvae_params = get_vae_model(
+        cvae, _ = get_vae_model(
             args.which_vae,
             vae_path=args.cvae_path,
             image_size=args.image_size,
@@ -298,7 +234,7 @@ def main_worker(gpu, ngpus_per_node, args):
         dim_head=args.dim_head,
         reversible=args.reversible,
         loss_img_weight=args.loss_img_weight,
-        attn_types=ATTN_TYPES,
+        attn_types=tuple(args.attn_types.split(',')),
         text_feature_dim=text_feature_dim,
         fixed_language_model=args.fixed_language_model,
         text_emb_bottleneck=args.text_emb_bottleneck,
@@ -310,18 +246,18 @@ def main_worker(gpu, ngpus_per_node, args):
         clip_text_emb=args.clip_text_emb,
     )
 
-    if DALLE_PATH is not None:  # if not resume and dalle_path is given, load weights
-        assert exists(DALLE_PATH), 'DALLE model file does not exist'
-        ckpt = torch.load(str(DALLE_PATH))
+    # if not resume and dalle_path is given, load weights
+    if dalle_path is not None:
+        assert exists(dalle_path), 'DALLE model file does not exist'
+        ckpt = torch.load(str(dalle_path))
         model_weights = ckpt['weights']
 
-    IMAGE_SIZE = args.image_size or vae.image_size
-    args.image_size = vae.image_size = IMAGE_SIZE
+    image_size = args.image_size or vae.image_size
+    args.image_size = vae.image_size = image_size
     if cvae is not None:
-        cvae.image_size = IMAGE_SIZE
+        cvae.image_size = image_size
 
     # initialize DALL-E / BERT and optimizer
-
     if args.ar:
         from dalle_pytorch.dalle_artv import DALLE
         dalle = DALLE(vae=vae, cvae=cvae, **dalle_params)
@@ -347,14 +283,12 @@ def main_worker(gpu, ngpus_per_node, args):
 
     dalle = model_to_gpu(dalle, args.gpu, True)
     dalle_module = dalle.module
-    # dist.barrier()
 
-    scheduler, scheduler_step = None, dummy_lr_scheduler_step
+    scheduler_step = dummy_lr_scheduler_step
     if args.lr_decay:
-        scheduler, scheduler_step = prepare_lr_scheduler(args, opt)
+        _, scheduler_step = prepare_lr_scheduler(args, opt)
 
     # create dataset and dataloader
-
     args.is_shuffle = True
 
     ds = get_dataset(args, tokenizer)
@@ -366,11 +300,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if is_root_worker():
         print(f'{len(ds)} image-text pairs found for training')
 
-    data_sampler = torch.utils.data.distributed.DistributedSampler(
-        ds,
-        # num_replicas=args.world_size,
-        # rank=args.rank,
-    )
+    data_sampler = torch.utils.data.distributed.DistributedSampler(ds)
 
     dl = DataLoader(
         ds,
@@ -382,38 +312,33 @@ def main_worker(gpu, ngpus_per_node, args):
         pin_memory=True,
     )
 
-    distr_dalle, distr_opt, distr_dl, distr_scheduler = dalle, opt, dl, scheduler
+    # distr_dalle, distr_opt, distr_dl = dalle, opt, dl
 
     # clipper
-
     clipper = None
     if args.clip_text_emb is not None:
         clipper = get_clipper(args)
         clipper.cuda()
         requires_grad(clipper, False)
 
-    # training
-
-    loss_mi_clip = torch.tensor(0.0).cuda()
-    moved_to_device = False
-
     if is_root_worker():
-        with open(LOG_FILE_NAME, 'a+') as f:
+        with open(log_file_name, 'a+') as f:
             f.write(
                 f"Name: {getattr(args, 'name', 'NA')} Time: {datetime.now()}\n{'-'*50}\n"
             )
 
-    distr_dl_iter = sample_data(distr_dl, data_sampler)
+    distr_dl_iter = sample_data(dl, data_sampler)
 
     pbar = range(args.iters)  # TODO
     if is_root_worker():
         pbar = tqdm(pbar,
-                    initial=START_ITER,
+                    initial=start_iter,
                     dynamic_ncols=True,
                     smoothing=0.01)
 
+    # training
     for idx in pbar:
-        i = idx + START_ITER
+        i = idx + start_iter
         which_iter = f"{i:07d}"
 
         if i > args.iters:
@@ -425,8 +350,8 @@ def main_worker(gpu, ngpus_per_node, args):
             visuals_neg, text_neg = map(lambda t: t.cuda(),
                                         (visuals_neg, text_neg))
         else:
-            text, frames, visuals = next(
-                distr_dl_iter)  # frames [B, T, C, H, W]
+            # frames [B, T, C, H, W]
+            text, frames, visuals = next(distr_dl_iter)
         if args.visual and len(visuals.shape) == 4:
             assert args.num_visuals == 1
             visuals = visuals.unsqueeze(1)
@@ -459,8 +384,7 @@ def main_worker(gpu, ngpus_per_node, args):
         target = frames[:, :args.num_targets, ...]
 
         # Train dalle
-
-        loss_msm, loss_rel, _, loss_vid, fake_sample, text_feat_before, text_feat_after = distr_dalle(
+        loss_msm, loss_rel, _, loss_vid, _, _, _ = dalle(
             text,
             visual=visuals if
             (args.visual and
@@ -471,10 +395,10 @@ def main_worker(gpu, ngpus_per_node, args):
             return_fake=False,
             rel=args.beta_rel > 0,
             vid=args.beta_vid > 0,
-            msm_strategy_prob=MSM_STRATEGY_PROB,
-            msm_bernoulli_prob=MSM_BERNOULLI_PROB,
-            relvid_bernoulli_prob=RELVID_BERNOULLI_PROB,
-            vid_strategy_prob=VID_STRATEGY_PROB,
+            msm_strategy_prob=args.msm_strategy_prob,
+            msm_bernoulli_prob=args.msm_bernoulli_prob,
+            relvid_bernoulli_prob=args.relvid_bernoulli_prob,
+            vid_strategy_prob=args.vid_strategy_prob,
             rel_no_fully_masked=args.rel_no_fully_masked,
             negvc=args.negvc,
             visual_neg=visuals_neg if (args.negvc and args.visual) else None,
@@ -491,10 +415,10 @@ def main_worker(gpu, ngpus_per_node, args):
         loss = (args.beta_msm * loss_msm + args.beta_rel * loss_rel +
                 args.beta_vid * loss_vid)
 
-        distr_opt.zero_grad()
+        opt.zero_grad()
         loss.backward()
-        clip_grad_norm_(distr_dalle.parameters(), GRAD_CLIP_NORM)
-        distr_opt.step()
+        clip_grad_norm_(dalle.parameters(), args.clip_grad_norm)
+        opt.step()
 
         avg_loss = reduce_loss(loss)
 
@@ -502,18 +426,18 @@ def main_worker(gpu, ngpus_per_node, args):
             pbar.set_description((f"loss {avg_loss.item():.4f} "))
 
         if i % args.log_every == 0 and is_root_worker():
-            with open(LOG_FILE_NAME, 'a+') as f:
+            with open(log_file_name, 'a+') as f:
                 f.write((f"iter {i:07d}; "
                          f"MSM {reduce_loss(loss_msm).item():.4f}; "
                          f"REL {reduce_loss(loss_rel).item():.4f}; "
                          f"VID {reduce_loss(loss_vid).item():.4f}; "
-                         f"lr {distr_opt.param_groups[0]['lr']}"
+                         f"lr {opt.param_groups[0]['lr']}"
                          f"\n"))
 
         if args.save_every_n_steps > 0 and i % args.save_every_n_steps == 0 and is_root_worker(
         ):
             save_model(
-                CKPT_DIR / which_iter,
+                ckpt_dir / which_iter,
                 params={
                     'iter': i,
                     'hparams': dalle_params,
@@ -546,10 +470,9 @@ def main_worker(gpu, ngpus_per_node, args):
             scheduler_step(avg_loss)
 
     # finish
-
     if is_root_worker():
         save_model(
-            CKPT_DIR / 'last',
+            ckpt_dir / 'last',
             params={
                 'iter': i,
                 'hparams': dalle_params,
