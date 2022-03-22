@@ -193,8 +193,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # tokenizer
     if args.fixed_language_model is not None:
-        tokenizer2, language_model, text_feature_dim, encode_text = get_fixed_language_model(
-            args)
+        tokenizer2, language_model, text_feature_dim, _ = get_fixed_language_model(args)
         language_model = model_to_gpu(language_model, args.gpu, True)
         tokenizer = None  # TODO: avoid tokenization and get raw text
     else:
