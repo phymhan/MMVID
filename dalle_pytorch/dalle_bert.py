@@ -1,10 +1,8 @@
 import random
 import numpy as np
-import pdb
-st = pdb.set_trace
 
 import torch
-from torch import nn, einsum
+from torch import nn
 import torch.nn.functional as F
 import torchvision.transforms as T
 from axial_positional_embedding import AxialPositionalEmbedding
