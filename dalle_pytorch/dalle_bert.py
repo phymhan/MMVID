@@ -286,7 +286,6 @@ class BERT(nn.Module):
         clip_text_emb=None,
     ):
         super().__init__()
-        # assert isinstance(vae, (DiscreteVAE, OpenAIDiscreteVAE, VQGanVAE1024)), 'vae must be an instance of DiscreteVAE'
         """
         Special Tokens:
         [REL]  if text-video are relevant
@@ -303,18 +302,17 @@ class BERT(nn.Module):
         image_seq_len = image_fmap_size**2
         self.dim = dim
 
-        # assert num_visuals <= 1
         self.num_visuals = num_visuals
         self.num_targets = num_targets
 
-        # self.fake_sample_pool = ImagePool(FAKE_POOL_SIZE, 1)
         self.random_erasing = T.RandomErasing(p=1,
                                               scale=(0.2, 0.8),
                                               ratio=(0.5, 2),
                                               value=0)
 
         if fixed_language_model is None:
-            num_text_tokens = num_text_tokens + text_seq_len  # reserve unique padding tokens for each position (text seq len)
+            # reserve unique padding tokens for each position (text seq len)
+            num_text_tokens = num_text_tokens + text_seq_len
             self.text_emb = nn.Embedding(num_text_tokens, dim)
             self.text_pos_emb = nn.Embedding(text_seq_len, dim)
             self.text_feature_mapping = lambda x: x
@@ -334,13 +332,9 @@ class BERT(nn.Module):
                 )
             else:
                 self.text_feature_mapping = nn.Linear(text_feature_dim, dim)
-                # self.text_feature_mapping = nn.Sequential(
-                #     nn.LayerNorm(text_feature_dim),
-                #     nn.Linear(text_feature_dim, dim),
-                # )
 
-        self.image_emb = nn.Embedding(num_image_tokens + 2,
-                                      dim)  # TODO: for masking+separate visual
+        # TODO: for masking+separate visual
+        self.image_emb = nn.Embedding(num_image_tokens + 2, dim)
         self.target_pos_emb = AxialPositionalEmbedding(
             dim, axial_shape=(num_targets, image_fmap_size, image_fmap_size))
 
@@ -348,15 +342,11 @@ class BERT(nn.Module):
             use_separate_visual_emb = True
         if num_visuals > 0:
             if use_separate_visual_emb:
-                self.visual_emb = nn.Embedding(
-                    num_image_tokens + 2,
-                    dim)  # TODO: for masking+separate visual
+                # TODO: for masking+separate visual
+                self.visual_emb = nn.Embedding(num_image_tokens + 2, dim)
             else:
                 self.visual_emb = None
-            # if self.num_visuals > 1:
-            #     self.visual_pos_emb = AxialPositionalEmbedding(dim, axial_shape = (num_visuals, image_fmap_size, image_fmap_size))
-            # else:
-            #     self.visual_pos_emb = AxialPositionalEmbedding(dim, axial_shape = (image_fmap_size, image_fmap_size))
+
             self.visual_pos_emb = AxialPositionalEmbeddingList(
                 dim,
                 num_visuals,
@@ -367,7 +357,8 @@ class BERT(nn.Module):
             '[SEP]': num_image_tokens + 1,
         }
 
-        self.num_text_tokens = num_text_tokens  # for offsetting logits index and calculating cross entropy loss
+        # for offsetting logits index and calculating cross entropy loss
+        self.num_text_tokens = num_text_tokens
         self.num_image_tokens = num_image_tokens
         self.text_seq_len = text_seq_len
         self.image_seq_len = image_seq_len
@@ -428,8 +419,8 @@ class BERT(nn.Module):
                 mask_type='mask_prev',
                 mask_kwargs={'index': mask_prev_index},
             )
-        elif pretrained_transformer in ['none',
-                                        'default']:  # train from scratch
+        elif pretrained_transformer in ['none', 'default']:
+            # train from scratch
             self.transformer = Transformer(dim=dim,
                                            causal=False,
                                            seq_len=seq_len,
@@ -474,11 +465,11 @@ class BERT(nn.Module):
 
         self.current_step = 0
         self.loss_img_weight = loss_img_weight
-        self.visual_eraser = T.RandomErasing(
-            p=0.95,
-            scale=(0.55, 0.85),
-            ratio=(0.5, 2),
-            value=self.num_image_tokens)  # erase visual
+        # erase visual
+        self.visual_eraser = T.RandomErasing(p=0.95,
+                                             scale=(0.55, 0.85),
+                                             ratio=(0.5, 2),
+                                             value=self.num_image_tokens)
 
     @torch.no_grad()
     @eval_decorator
