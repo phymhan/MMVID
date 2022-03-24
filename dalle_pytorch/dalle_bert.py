@@ -278,7 +278,6 @@ class BERT(nn.Module):
         text_feature_dim=0,
         fixed_language_model=None,
         pretrained_transformer='none',
-        max_time_len=16,
         num_visuals=1,
         num_targets=1,
         use_separate_visual_emb=False,
