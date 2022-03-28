@@ -1,25 +1,47 @@
-import argparse
 from pathlib import Path
-import os
-import shutil
 import random
 
-from datetime import datetime
 import numpy as np
-import natsort
 from tqdm import tqdm
+import pickle
 import pdb
 st = pdb.set_trace
 
 import torch
-from torch.nn.utils import clip_grad_norm_
-from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.multiprocessing as mp
-import torch.distributed as dist
-import torchvision
+from utils import utils_html
+
+
+def clip_similarity(model, tokenizer, image, description):
+    input_resolution = model.input_resolution.item()
+    context_length = model.context_length.item()
+
+    if image.shape[2] != input_resolution:
+        image = F.interpolate(image, (input_resolution, input_resolution))
+    image_mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).cuda()
+    image_std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).cuda()
+    image_input = (image - image_mean[:, None, None]) / image_std[:, None, None]
+    text_input = tokenizer.tokenize(
+        description,
+        context_length,
+        truncate_text=True,
+    ).cuda()
+    with torch.no_grad():
+        image_features = model.encode_image(image_input).float()
+        text_features = model.encode_text(text_input).float()
+
+    image_features /= image_features.norm(dim=-1, keepdim=True)
+    text_features /= text_features.norm(dim=-1, keepdim=True)
+    similarity = (text_features.cpu().numpy() * image_features.cpu().numpy()).sum(1)
+    return similarity
+
+
+def mean_pooling(model_output, attention_mask):
+    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
+    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
 
 @torch.no_grad()
@@ -64,12 +86,12 @@ def evaluate(args, dalle_module, tokenizer, tokenizer2, language_model, dl_iter,
     if args.dm:
         from functools import partial
         generate_images = partial(
-            dalle_module.generate_images_debug,
+            dalle_module.generate_images,
             sample_mode=args.dm_sample_mode,
             sample_with_confidence=args.dm_sample_with_confidence,
         )
     else:
-        generate_images = dalle_module.generate_images_test
+        generate_images = dalle_module.generate_images
 
     real_embs = []
     fake_embs = []
@@ -407,6 +429,16 @@ def evaluate_clip(args, dalle_module, tokenizer, tokenizer2, language_model, dl_
     clipper = torch.jit.load("pretrained/ViT-B-32.pt").cuda().eval()
     clip_tokenizer = SimpleTokenizer()
 
+    if args.dm:
+        from functools import partial
+        generate_images = partial(
+            dalle_module.generate_images,
+            sample_mode=args.dm_sample_mode,
+            sample_with_confidence=args.dm_sample_with_confidence,
+        )
+    else:
+        generate_images = dalle_module.generate_images
+
     # cnt = 0
 
     batch_size = 1  # must be 1
@@ -461,7 +493,7 @@ def evaluate_clip(args, dalle_module, tokenizer, tokenizer2, language_model, dl_
                 face_mode = 'mask2'
             else:
                 face_mode = None
-            sample_vc, _, _ = dalle_module.generate_images_debug(
+            sample_vc, _, _ = generate_images(
                 text,
                 visual=None,
                 erase_visual=False,
