@@ -7,61 +7,14 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
 
-from utils import utils
 from utils import utils_html
 from utils.utils_train import get_dataset, get_fixed_language_model, \
     get_vae_model, get_tokenizer
 from utils.utils_train import visualize_test as visualize
 from utils.utils_train import visualize_long
 from utils.utils_eval import evaluate, evaluate_clip
-
-import pdb
-st = pdb.set_trace
-
-def exists(val):
-    return val is not None
-
-
-def get_trainable_params(model):
-    return [params for params in model.parameters() if params.requires_grad]
-
-
-def set_requires_grad(model, value):
-    for param in model.parameters():
-        param.requires_grad = value
-
-
-def group_weight(model):
-    group_decay, group_no_decay = [], []
-    for params in model.named_parameters():
-        if 'transformer' in params[0]:
-            if 'bias' in params[0] or 'norm' in params[0]:
-                group_no_decay.append(params[1])
-                continue
-        group_decay.append(params[1])
-
-    assert len(list(
-        model.parameters())) == len(group_decay) + len(group_no_decay)
-    groups = [
-        dict(params=group_decay),
-        dict(params=group_no_decay, weight_decay=.0)
-    ]
-    return groups
-
-
-def sample_data(loader, sampler=None):
-    epoch = -1
-    while True:
-        epoch += 1
-        if sampler is not None:
-            sampler.set_epoch(epoch)
-        for batch in loader:
-            yield batch
-
-
-def requires_grad(model, flag=True):
-    for p in model.parameters():
-        p.requires_grad = flag
+from utils.utils import exists, set_requires_grad, sample_data, \
+    mean_pooling, seed_everything
 
 
 def model_to_gpu(model, gpu, is_train):
@@ -71,21 +24,6 @@ def model_to_gpu(model, gpu, is_train):
     return model
 
 
-def cleanup():
-    dist.destroy_process_group()
-
-
-# reconstitute vae and dalle params
-
-def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[
-        0]  #First element of model_output contains all token embeddings
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(
-        token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
-        input_mask_expanded.sum(1), min=1e-9)
-
-
 def main():
     # argument parsing
 
@@ -93,7 +31,6 @@ def main():
     args = process_args()
 
     main_worker(
-        # args.gpu_ids,
         args,
     )
 
@@ -103,14 +40,11 @@ def main_worker(args):
     args.gpu = 0
     torch.backends.cudnn.benchmark = True
 
-    if args.gpu is not None:
-        print("Use GPU: {} for training".format(args.gpu))
-
     assert Path(args.image_text_folder).exists(
     ), f'The path {args.image_text_folder} was not found.'
 
+    seed_everything(args.seed)
     args.deterministic = True  # NOTE: make everything deterministic
-
     if args.eval_mode == 'eval':
         args.batch_size = 16  # make samples reproducible
 
@@ -173,7 +107,6 @@ def main_worker(args):
     start_iter = 0
 
     # get vae model
-    vae = None
     vae, _ = get_vae_model(args.which_vae,
                             vae_path=args.vae_path,
                             image_size=args.image_size)
@@ -208,9 +141,7 @@ def main_worker(args):
     if cvae is not None:
         cvae.image_size = image_size
 
-    # initialize DALL-E / BERT and optimizer
-    dalle = None
-    dalle_module = None
+    # initialize DALL-E / BERT
     if args.ar:
         from mmvid_pytorch.dalle_artv import DALLE
         dalle = DALLE(vae=vae, cvae=cvae, **dalle_params)
@@ -223,10 +154,11 @@ def main_worker(args):
     if model_weights is not None:
         dalle.load_state_dict(model_weights, strict=False)
 
-    dalle = model_to_gpu(dalle, args.gpu, True)  # TODO
-    dalle_module = dalle.module  # TODO
+    set_requires_grad(dalle, False)
+    dalle = model_to_gpu(dalle, args.gpu, True)
+    dalle_module = dalle.module
 
-    args.is_shuffle = True  # TODO
+    args.is_shuffle = True
 
     ds = get_dataset(args, tokenizer)
     assert len(ds) > 0, 'dataset is empty'
@@ -297,7 +229,6 @@ def main_worker(args):
         frames, visuals = map(lambda t: t.cuda(), (frames, visuals))
         if args.fixed_language_model is not None:
             text_description = text
-            # text = encode_text(text_description)
             with torch.no_grad():
                 encoded_input = tokenizer2(
                     text_description,

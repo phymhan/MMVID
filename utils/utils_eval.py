@@ -3,42 +3,15 @@ import random
 
 import numpy as np
 from tqdm import tqdm
+import pickle
 
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
+
 import utils.utils_html as utils_html
-
-
-def clip_similarity(model, tokenizer, image, description):
-    input_resolution = model.input_resolution.item()
-    context_length = model.context_length.item()
-
-    if image.shape[2] != input_resolution:
-        image = F.interpolate(image, (input_resolution, input_resolution))
-    image_mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).cuda()
-    image_std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).cuda()
-    image_input = (image - image_mean[:, None, None]) / image_std[:, None, None]
-    text_input = tokenizer.tokenize(
-        description,
-        context_length,
-        truncate_text=True,
-    ).cuda()
-    with torch.no_grad():
-        image_features = model.encode_image(image_input).float()
-        text_features = model.encode_text(text_input).float()
-
-    image_features /= image_features.norm(dim=-1, keepdim=True)
-    text_features /= text_features.norm(dim=-1, keepdim=True)
-    similarity = (text_features.cpu().numpy() * image_features.cpu().numpy()).sum(1)
-    return similarity
-
-
-def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+from utils.utils import mean_pooling, clip_similarity
 
 
 @torch.no_grad()
@@ -69,9 +42,11 @@ def evaluate(args,
     USE_HTML = True
 
     if USE_HTML:
-        webpage = utils_html.initialize_webpage(LOG_WEB_DIR,
-                                                'DALLE: ' + args.name + ' FVD',
-                                                reverse=False)
+        webpage = utils_html.initialize_webpage(
+            LOG_WEB_DIR,
+            'DALLE: ' + args.name + ' FVD',
+            reverse=False
+        )
     else:
         webpage = None
     N_FRAME = args.num_targets
@@ -260,19 +235,14 @@ def evaluate_clip(args,
                   upper_bound=False):
     mp_steps = args.mask_predict_steps1
 
-    # import pcfg
-
     assert not args.visual
 
     OUTPUT_DIR = args.log_metric_dir
-    VIDEO_LENGTH = 15
     TOTAL_NUM = args.eval_num
 
     from mmvid_pytorch.tokenizer import SimpleTokenizer
     clipper = torch.jit.load("pretrained/ViT-B-32.pt").cuda().eval()
     clip_tokenizer = SimpleTokenizer()
-
-    # cnt = 0
 
     batch_size = 1  # must be 1
     results = []
@@ -343,7 +313,6 @@ def evaluate_clip(args,
         scores = clip_similarity(clipper, clip_tokenizer, images,
                                  text_description)
         results.append((text_description[0], scores))
-        # cnt += batch_size
 
     suffix = '_real' if upper_bound else ''
     with open(OUTPUT_DIR / f'clip{suffix}_data.pkl', 'wb') as f:

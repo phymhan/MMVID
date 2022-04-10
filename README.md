@@ -46,6 +46,19 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command.
 </details>
 
 <details>
+  <summary>Text Augmentation</summary>
+
+  Text augmentation for better training. To enable using a pretrained RoBERTa model, append `--fixed_language_model roberta-large` to the training/testing command. Note that this feature is only *experimental* and is not very robust.
+
+  To enable text dropout, append `--drop_sentence` to the training command. Text dropout is also compatible with using a RoBERTa. We observed that text dropout genrally improves diversity in the generated videos.
+
+  #### Training:
+    bash scripts/mmvoxceleb/text_augement/train.sh
+  #### Testing:
+    bash scripts/mmvoxceleb/text_augement/test.sh
+</details>
+
+<details>
   <summary>Text and Mask</summary>
   
   #### Training:
@@ -170,6 +183,7 @@ All pretrained models are provided here in [checkpoint folder](https://drive.goo
 | Image and Mask | [pt](https://drive.google.com/file/d/1vcq8la7kpJFqdswfX_KuincRNI6o0h3C/view?usp=sharing) | - |
 | Text and Partial Image | [pt](https://drive.google.com/file/d/1wSBm9erN9VP58m3jRQnB_kBCrXW-RGSg/view?usp=sharing) | - |
 | Image and Video | [pt](https://drive.google.com/file/d/1LGYA9i5KRA1L-5DlM9Bubbo9PiH2RqfG/view?usp=sharing) | - |
+| Text-Augmentation | [pt](https://drive.google.com/file/d/1hLNWvjRI826Q0kElAEx45FiYUgnZC0BP/view?usp=sharing) | - |
 
 ### iPER
 |     | Weight |

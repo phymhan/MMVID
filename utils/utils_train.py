@@ -10,10 +10,7 @@ import torchvision
 from einops import rearrange
 
 from utils import utils_html
-
-
-def exists(val):
-    return val is not None
+from utils.utils import mean_pooling, exists
 
 
 def get_dataset(args, tokenizer):
@@ -161,25 +158,8 @@ def get_vae_model(which_vae,
         from mmvid_pytorch.vae import VQGanVAE1024
         vae = VQGanVAE1024(vae_path=vae_path, image_size=image_size)
         vae_params = None
-    # elif which_vae == 'openai':
-    #     from mmvid_pytorch.vae import OpenAIDiscreteVAE
-    #     vae = OpenAIDiscreteVAE()
-    #     vae.enc.blocks.output.conv.use_float16 = True
-    #     vae_params = None
-    # elif which_vae == 'custom':
-    #     from mmvid_pytorch.vae import DiscreteVAE
-    #     if exists(vae_path) and Path(vae_path).exists():
-    #         loaded_obj = torch.load(str(vae_path))
-    #         vae_params, vae_weights = loaded_obj['hparams'], loaded_obj[
-    #             'weights']
-    #         vae = DiscreteVAE(**vae_params)
-    #         vae.load_state_dict(vae_weights)
-    #     elif exists(vae_params):
-    #         vae = DiscreteVAE(**vae_params)
-    #     else:
-    #         raise RuntimeError(
-    #             "At least one of vae_path and vae_params should exist.")
-    else:  # NOTE: See dalle_pytorch if you want to use OpenAI's VAE or custom VAE
+    else:
+        # NOTE: See dalle_pytorch if you want to use OpenAI's VAE or custom VAE
         raise NotImplementedError
     return vae, vae_params
 
@@ -225,7 +205,6 @@ def get_fixed_language_model(args):
     text_feature_dim, encode_text = 0, None
     if args.fixed_language_model == 'roberta-large':
         from transformers import RobertaTokenizer, RobertaModel
-        MODEL = "roberta-large"
         tokenizer2 = RobertaTokenizer.from_pretrained('roberta-large')
         language_model = RobertaModel.from_pretrained('roberta-large').cuda()
         text_feature_dim = 1024
@@ -246,32 +225,6 @@ def get_fixed_language_model(args):
             output = language_model(**encoded_input)
             embeddings = mean_pooling(output, encoded_input['attention_mask'])
             return embeddings
-
-    elif args.fixed_language_model == 'twitter-xlm-roberta-base':
-        from transformers import AutoTokenizer, AutoModel, AutoConfig
-        MODEL = "cardiffnlp/twitter-xlm-roberta-base"
-        tokenizer2 = AutoTokenizer.from_pretrained(MODEL)
-        config = AutoConfig.from_pretrained(MODEL)
-        language_model = AutoModel.from_pretrained(MODEL).cuda()
-        text_feature_dim = 768
-
-        @torch.no_grad()
-        def encode_text(descriptions, device='cuda'):
-            encoded_input = tokenizer2(
-                descriptions,
-                return_tensors='pt',
-                padding=True,
-                truncation=True,
-                max_length=args.text_seq_len,
-            )
-            encoded_input = {
-                'input_ids': encoded_input['input_ids'].to(device),
-                'attention_mask': encoded_input['attention_mask'].to(device),
-            }
-            output = language_model(**encoded_input)
-            embeddings = mean_pooling(output, encoded_input['attention_mask'])
-            return embeddings
-
     else:
         raise NotImplementedError
 
@@ -600,7 +553,6 @@ def visualize_train(
                 text_repeat,
                 visual=visual,
                 erase_visual=args.rand_visual,
-                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -746,7 +698,6 @@ def visualize_train(
                 text_repeat,
                 visual=visual_cf,
                 erase_visual=args.rand_visual,
-                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -785,7 +736,6 @@ def visualize_train(
                 text_repeat,
                 visual=None,
                 erase_visual=args.rand_visual,
-                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -851,9 +801,11 @@ def visualize_test(
     text_description, text, frames, visuals = data_batch[
         'description'], data_batch['text'], data_batch['target'], data_batch[
             'visual']
-    text_neg, visuals_neg = data_batch['text_neg'], data_batch['visual_neg']
+    visuals_neg = data_batch['visual_neg']
+    erase_real = False
 
-    if description is not None:
+    if description is not None:  # NOTE: this is set via args.description
+        erase_real = True
         bs = text.shape[0]
         description = [description]
         if args.fixed_language_model is not None:
@@ -879,6 +831,10 @@ def visualize_test(
             )
             text = tokenized_text.repeat(bs, 1).cuda()
         text_description = description * bs
+    
+    if erase_real:
+        frames.fill_(1)
+
     if isinstance(visuals, (list, tuple)):
         visuals = torch.stack(visuals, dim=1)
 
@@ -1036,7 +992,6 @@ def visualize_test(
                 text_repeat,
                 visual=visual,
                 erase_visual=args.rand_visual,
-                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -1181,7 +1136,6 @@ def visualize_test(
                 text_repeat,
                 visual=visual_cf,
                 erase_visual=args.rand_visual,
-                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -1204,7 +1158,6 @@ def visualize_test(
                 ]
                 nrow_web += [N_VISUAL + N_PER_SAMPLE]
             if args.debug:
-                # tmp.insert(0, frames[j,:N_FRAME,...])
                 tmp = torch.cat(tmp, 0)
                 torchvision.utils.save_image(tmp,
                                              LOG_SAMPLE_DIR /
@@ -1214,7 +1167,7 @@ def visualize_test(
                                              normalize=True,
                                              range=(0, 1))
 
-        ## test_mode: shapes
+        ## test_mode: for shapes
         # =================== for shapes ======================
         if args.visual and args.test_mode == 'shapes':
             for kk in range(3):
@@ -1331,7 +1284,6 @@ def visualize_long(args,
     args.mask_predict_steps1 = 0
 
     generate_images = dalle_module.generate_images
-    # pnag_suffix = '_argmax' if args.pnag_argmax else ''
     pnag_suffix = '_dynamic' if args.pnag_dynamic else ''
     blank_frame_nvc = torch.ones(N_PER_SAMPLE, N_VISUAL, 3, args.image_size,
                                  args.image_size).cuda()
@@ -1402,7 +1354,6 @@ def visualize_long(args,
                         text_repeat,
                         visual=visual,
                         erase_visual=args.rand_visual,
-                        # argmax=args.pnag_argmax,
                         dynamic=args.pnag_dynamic,
                         debug=args.debug,
                         mask_predict_steps=mp_steps,
@@ -1437,7 +1388,6 @@ def visualize_long(args,
                     batch_size = text_repeat.shape[0]
                     device = text_repeat.device
                     tmp = []
-                    sample_prev = []
                     for tt in range(2**t):
                         preserve = dalle_module.image_token_lut[
                             '[MASK]'] + torch.zeros(
@@ -1455,7 +1405,6 @@ def visualize_long(args,
                             text_repeat,
                             visual=visual,
                             erase_visual=args.rand_visual,
-                            # argmax=args.pnag_argmax,
                             dynamic=args.pnag_dynamic,
                             debug=args.debug,
                             mask_predict_steps=mp_steps,
@@ -1503,7 +1452,6 @@ def visualize_long(args,
                     batch_size = text_repeat.shape[0]
                     device = text_repeat.device
                     tmp = []
-                    sample_prev = []
 
                     if t == 0:
                         last_tt = 0
@@ -1534,7 +1482,6 @@ def visualize_long(args,
                             text_repeat,
                             visual=visual,
                             erase_visual=args.rand_visual,
-                            # argmax=args.pnag_argmax,
                             dynamic=args.pnag_dynamic,
                             debug=args.debug,
                             mask_predict_steps=mp_steps,
@@ -1636,7 +1583,6 @@ def visualize_long(args,
                 visual=visuals[j2:j2 + 1, ...].repeat(N_PER_SAMPLE, 1, 1, 1,
                                                       1),
                 erase_visual=args.rand_visual,
-                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -1677,7 +1623,6 @@ def visualize_long(args,
                 text_repeat,
                 visual=None,
                 erase_visual=args.rand_visual,
-                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,

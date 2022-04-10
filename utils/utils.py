@@ -50,6 +50,55 @@ def save_video(xseq, path):
     write_video(path, video, fps=15)
 
 
+def mean_pooling(model_output, attention_mask):
+    token_embeddings = model_output[0]  # First element of model_output contains all token embeddings
+    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+
+
+def clip_similarity(model, tokenizer, image, description):
+    input_resolution = model.input_resolution.item()
+    context_length = model.context_length.item()
+
+    if image.shape[2] != input_resolution:
+        image = F.interpolate(image, (input_resolution, input_resolution))
+    image_mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).cuda()
+    image_std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).cuda()
+    image_input = (image - image_mean[:, None, None]) / image_std[:, None, None]
+    text_input = tokenizer.tokenize(
+        description,
+        context_length,
+        truncate_text=True,
+    ).cuda()
+    with torch.no_grad():
+        image_features = model.encode_image(image_input).float()
+        text_features = model.encode_text(text_input).float()
+
+    image_features /= image_features.norm(dim=-1, keepdim=True)
+    text_features /= text_features.norm(dim=-1, keepdim=True)
+    similarity = (text_features.cpu().numpy() * image_features.cpu().numpy()).sum(1)
+    return similarity
+
+
+def exists(val):
+    return val is not None
+
+
+def set_requires_grad(model, value):
+    for param in model.parameters():
+        param.requires_grad = value
+
+
+def sample_data(loader, sampler=None):
+    epoch = -1
+    while True:
+        epoch += 1
+        if sampler is not None:
+            sampler.set_epoch(epoch)
+        for batch in loader:
+            yield batch
+
+
 """
 Copied from VQGAN main.py
 """

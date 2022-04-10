@@ -13,58 +13,16 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
 import torch.distributed as dist
 
-from utils import utils
 from utils import utils_html
-from utils.utils_train import get_dataset, get_fixed_language_model, save_model, \
-    prepare_lr_scheduler, dummy_lr_scheduler_step, get_optimizer, \
-    get_vae_model, get_tokenizer
+from utils.utils_train import get_dataset, get_fixed_language_model, \
+    save_model, prepare_lr_scheduler, dummy_lr_scheduler_step, \
+        get_optimizer, get_vae_model, get_tokenizer
 from utils.utils_train import visualize_train as visualize
-
-
-def exists(val):
-    return val is not None
+from utils.utils import seed_everything, sample_data, exists, mean_pooling
 
 
 def get_trainable_params(model):
     return [params for params in model.parameters() if params.requires_grad]
-
-
-def set_requires_grad(model, value):
-    for param in model.parameters():
-        param.requires_grad = value
-
-
-def group_weight(model):
-    group_decay, group_no_decay = [], []
-    for params in model.named_parameters():
-        if 'transformer' in params[0]:
-            if 'bias' in params[0] or 'norm' in params[0]:
-                group_no_decay.append(params[1])
-                continue
-        group_decay.append(params[1])
-
-    assert len(list(
-        model.parameters())) == len(group_decay) + len(group_no_decay)
-    groups = [
-        dict(params=group_decay),
-        dict(params=group_no_decay, weight_decay=.0)
-    ]
-    return groups
-
-
-def sample_data(loader, sampler=None):
-    epoch = -1
-    while True:
-        epoch += 1
-        if sampler is not None:
-            sampler.set_epoch(epoch)
-        for batch in loader:
-            yield batch
-
-
-def requires_grad(model, flag=True):
-    for p in model.parameters():
-        p.requires_grad = flag
 
 
 def model_to_gpu(model, gpu, is_train):
@@ -86,26 +44,12 @@ def cleanup():
     dist.destroy_process_group()
 
 
-def mean_pooling(model_output, attention_mask):
-    # First element of model_output contains all token embeddings
-    token_embeddings = model_output[0]
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(
-        token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
-        input_mask_expanded.sum(1), min=1e-9)
-
-
-def reduce_loss(loss):  # TODO
-    return loss
-
-
 def main():
 
-    # argument parsing
     from utils.utils_args import process_args
     args = process_args(train=True)
 
-    args.multiprocessing_distributed = True  # TODO: always use multiprocessing_distributed
+    args.multiprocessing_distributed = True  # always use multiprocessing_distributed
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
     args.world_batch_size = args.batch_size
     ngpus_per_node = torch.cuda.device_count()
@@ -140,7 +84,7 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.multiprocessing_distributed:
             args.rank = args.rank * ngpus_per_node + args.gpu
 
-        utils.seed_everything(args.seed + args.rank)  # TODO
+        seed_everything(args.seed + args.rank)
 
         dist.init_process_group(backend=args.dist_backend,
                                 init_method=args.dist_url,
@@ -297,9 +241,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     distr_dl_iter = sample_data(dl, data_sampler)
 
-    pbar = range(args.iters)  # TODO
     if is_root_worker():
-        pbar = tqdm(pbar,
+        pbar = tqdm(range(args.iters),
                     initial=start_iter,
                     dynamic_ncols=True,
                     smoothing=0.01)
@@ -370,14 +313,10 @@ def main_worker(gpu, ngpus_per_node, args):
             negvc=args.negvc,
             visual_neg=visuals_neg if (args.negvc and args.visual) else None,
             text_neg=text_neg if args.negvc else None,
-            # visual_pos=None,
             pc_prob=args.pc_prob,
             vc_mode=args.vc_mode,
             face_mode=None,  # NOTE: face_mode is used in testing, for specifying the desired occlusion pattern
             visual_aug_mode=args.visual_aug_mode,
-            # time_schedule=args.dm_time_schedule,
-            # mask_schedule=args.dm_mask_schedule,
-            # loss_type=args.dm_loss_type,
         )
         loss = args.beta_msm * loss_msm + args.beta_rel * loss_rel + args.beta_vid * loss_vid
 
@@ -386,7 +325,7 @@ def main_worker(gpu, ngpus_per_node, args):
         clip_grad_norm_(dalle.parameters(), args.clip_grad_norm)
         opt.step()
 
-        avg_loss = reduce_loss(loss)
+        avg_loss = loss
 
         if is_root_worker():
             pbar.set_description((f"loss {avg_loss.item():.4f} "))
@@ -394,9 +333,9 @@ def main_worker(gpu, ngpus_per_node, args):
         if i % args.log_every == 0 and is_root_worker():
             with open(log_file_name, 'a+') as f:
                 f.write((f"iter {i:07d}; "
-                         f"MSM {reduce_loss(loss_msm).item():.4f}; "
-                         f"REL {reduce_loss(loss_rel).item():.4f}; "
-                         f"VID {reduce_loss(loss_vid).item():.4f}; "
+                         f"MSM {loss_msm.item():.4f}; "
+                         f"REL {loss_rel.item():.4f}; "
+                         f"VID {loss_vid.item():.4f}; "
                          f"lr {opt.param_groups[0]['lr']}"
                          f"\n"))
 
