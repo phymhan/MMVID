@@ -20,14 +20,11 @@ import torch.nn.functional as F
 
 from einops import rearrange
 
-from dalle_pytorch import distributed_utils
+from mmvid_pytorch import distributed_utils
 
 import importlib
-from dalle_pytorch.transformers.mingpt import GPT
+from mmvid_pytorch.transformers.mingpt import GPT
 
-import pdb
-
-st = pdb.set_trace
 
 # constants
 
@@ -139,7 +136,6 @@ class VQGanTransformer(nn.Module):
         transformer_config['mask_kwargs'] = mask_kwargs
         if seq_len > 0:
             transformer_config['block_size'] = seq_len
-        # model = instantiate_from_config(config=transformer_config)
         model = GPT(**transformer_config)
         state = torch.load(model_filename, map_location='cpu')['state_dict']
         state_dict = {}
@@ -151,12 +147,6 @@ class VQGanTransformer(nn.Module):
 
         self.model = model
 
-        # self.num_layers = 4
-        # self.image_size = 256
-        # self.num_tokens = 1024
-
-        # self._register_external_parameters()
-
     def _register_external_parameters(self):
         """Register external parameters for DeepSpeed partitioning."""
         if (not distributed_utils.is_distributed
@@ -167,24 +157,6 @@ class VQGanTransformer(nn.Module):
         deepspeed = distributed_utils.backend.backend_module
         deepspeed.zero.register_external_parameter(
             self, self.model.quantize.embedding.weight)
-
-    # @torch.no_grad()
-    # def get_codebook_indices(self, img):
-    #     b = img.shape[0]
-    #     img = (2 * img) - 1
-    #     _, _, [_, _, indices] = self.model.encode(img)
-    #     return rearrange(indices, '(b n) () -> b n', b = b)
-
-    # def decode(self, img_seq):
-    #     b, n = img_seq.shape
-    #     one_hot_indices = F.one_hot(img_seq, num_classes = self.num_tokens).float()
-    #     z = (one_hot_indices @ self.model.quantize.embedding.weight)
-
-    #     z = rearrange(z, 'b (h w) c -> b c h w', h = int(sqrt(n)))
-    #     img = self.model.decode(z)
-
-    #     img = (img.clamp(-1., 1.) + 1) * 0.5
-    #     return img
 
     def forward(self, x, **kwargs):
         return self.model(x, **kwargs)[0]
@@ -203,7 +175,6 @@ class minGPTTransformer(nn.Module):
         super().__init__()
 
         self.causal = causal
-        # model = instantiate_from_config(config=transformer_config)
         model = GPT(vocab_size=1,
                     block_size=seq_len,
                     n_layer=n_layers,

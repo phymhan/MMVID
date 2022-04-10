@@ -8,8 +8,8 @@ import torchvision.transforms as T
 from axial_positional_embedding import AxialPositionalEmbedding
 from einops import rearrange
 
-from dalle_pytorch.transformer import Transformer, DivideMax
-from dalle_pytorch.modules import AxialPositionalEmbeddingList
+from mmvid_pytorch.modules import AxialPositionalEmbeddingList
+from utils.utils import DivideMax
 
 FAKE_POOL_SIZE = 64
 
@@ -265,35 +265,23 @@ class BERT(nn.Module):
         cvae=None,
         num_text_tokens=10000,
         text_seq_len=256,
-        depth,
-        heads=8,
-        dim_head=64,
-        reversible=False,
-        attn_dropout=0.,
-        ff_dropout=0,
-        sparse_attn=False,
-        attn_types=None,
-        loss_img_weight=7,
         stable=False,
         text_feature_dim=0,
         fixed_language_model=None,
-        pretrained_transformer='none',
+        which_transformer='none',
         num_visuals=1,
         num_targets=1,
         use_separate_visual_emb=False,
         insert_sep=False,
         text_emb_bottleneck=False,
-        clip_text_emb=None,
+        **kwargs,
     ):
         super().__init__()
         """
         Special Tokens:
         [REL]  if text-video are relevant
         [VID]  if video is continuous (shuffle frames)
-        [SUM]  summary
         [MASK] masking
-        [EOT]  end of text
-        [EOV]  end of visual
         [SEP]  separation (reserved)
         """
         image_size = vae.image_size
@@ -371,69 +359,62 @@ class BERT(nn.Module):
 
         self.special_token_lut = {
             '[REL]': 0,
-            '[FDL]': 1,
+            # ---------- before and after control sequence ----------
+            '[ST1]': 1,
             '[VID]': 2,
-            '[SUM]': 3,
-            '[MASK]': 4,  # unused, [MASK] is defined in image_token_lut
-        }
+            '[ST3]': 3,
+            '[ST4]': 4,
+        }  # NOTE: [ST{1,3,4}] are reserved for future use
         self.num_special_tokens = len(self.special_token_lut)
-        self.before_control_tok = [0]  # rel
-        self.after_control_tok = [1, 2]  # vid, fdl
+        self.before_control_tok = [0]  # REL
+        self.after_control_tok = [1, 2]  # ST1, VID
         self.before_control_seq_len = len(self.before_control_tok)
         self.after_control_seq_len = len(self.after_control_tok)
         self.special_emb = nn.Embedding(self.num_special_tokens, dim)
         self.special_pos_emb = nn.Embedding(self.num_special_tokens, dim)
         self.rel_tok_index = 0
-        self.fdl_tok_index = self.before_control_seq_len + self.text_seq_len + self.visual_seq_len + 0
+        self.st1_tok_index = self.before_control_seq_len + self.text_seq_len + self.visual_seq_len
         self.vid_tok_index = self.before_control_seq_len + self.text_seq_len + self.visual_seq_len + 1
-        self.txt_tok_index = self.before_control_seq_len + 0
+        self.txt_tok_index = self.before_control_seq_len
 
-        seq_len = self.before_control_seq_len + self.text_seq_len + self.visual_seq_len + self.after_control_seq_len + self.target_seq_len
+        seq_len = self.before_control_seq_len + \
+            self.text_seq_len + \
+            self.visual_seq_len + \
+            self.after_control_seq_len + \
+            self.target_seq_len
         self.total_seq_len = seq_len
 
         self.vae = vae
         self.cvae = cvae
         set_requires_grad(self.vae, False)  # freeze VAE from being trained
-        set_requires_grad(self.cvae, False)  # freeze VAE from being trained
+        set_requires_grad(self.cvae, False)  # freeze cVAE from being trained
 
-        # self.pretrained_text_feature = pretrained_text_feature
         self.fixed_language_model = fixed_language_model
-        self.pretrained_transformer = pretrained_transformer
-        mask_prev_index = [self.fdl_tok_index, self.vid_tok_index]
-        assert pretrained_transformer != 'default'
-        if pretrained_transformer.startswith('vqgan'):
-            from dalle_pytorch.transformers.vqgan_model import VQGanTransformer
+        self.which_transformer = which_transformer
+        mask_prev_index = [self.st1_tok_index, self.vid_tok_index]
+        assert which_transformer != 'default'
+        if which_transformer.startswith('vqgan'):
+            from mmvid_pytorch.transformers.vqgan_model import VQGanTransformer
             self.transformer = VQGanTransformer(
-                pretrained_transformer,
+                which_transformer,
                 seq_len,
+                model_path=kwargs['openai_clip_path'],
                 causal=True,
                 mask_type='mask_prev',
                 mask_kwargs={'index': mask_prev_index},
             )
-        elif pretrained_transformer.startswith('openai_clip'):
-            from dalle_pytorch.transformers.clip_model import OpenAICLIPTransformer
+        elif which_transformer.startswith('openai_clip'):
+            from mmvid_pytorch.transformers.clip_model import OpenAICLIPTransformer
             self.transformer = OpenAICLIPTransformer(
                 seq_len,
-                pretrained_transformer,
+                which_transformer,
+                model_path=kwargs['openai_clip_path'],
                 causal=True,
                 mask_type='mask_prev',
                 mask_kwargs={'index': mask_prev_index},
             )
-        elif pretrained_transformer in ['none', 'default']:
-            # train from scratch
-            self.transformer = Transformer(dim=dim,
-                                           causal=False,
-                                           seq_len=seq_len,
-                                           depth=depth,
-                                           heads=heads,
-                                           dim_head=dim_head,
-                                           reversible=reversible,
-                                           attn_dropout=attn_dropout,
-                                           ff_dropout=ff_dropout,
-                                           attn_types=attn_types,
-                                           image_fmap_size=image_fmap_size,
-                                           sparse_attn=sparse_attn,
-                                           stable=stable)
+        else:  # NOTE: You can port the Transformer from dalle_pytorch if you want to train from scratch
+            raise NotImplementedError
 
         self.stable = stable
 
@@ -448,23 +429,12 @@ class BERT(nn.Module):
             nn.LayerNorm(dim),
             nn.Linear(dim, 1),
         )
-        self.to_logits_fdl = nn.Sequential(
-            nn.LayerNorm(dim),
-            nn.Linear(dim, 1),
-        )
         self.to_logits_vid = nn.Sequential(
             nn.LayerNorm(dim),
             nn.Linear(dim, 1),
         )
-        self.clip_text_emb = clip_text_emb
-        if clip_text_emb is not None:
-            self.to_logits_txt = nn.Sequential(
-                nn.LayerNorm(dim),
-                nn.Linear(dim, 512),
-            )
 
         self.current_step = 0
-        self.loss_img_weight = loss_img_weight
         # erase visual
         self.visual_eraser = T.RandomErasing(p=0.95,
                                              scale=(0.55, 0.85),
@@ -477,13 +447,9 @@ class BERT(nn.Module):
         self,
         text,
         *,
-        clip=None,
         visual=None,
         mask=None,
-        filter_thres=0.5,
-        temperature=1.,
         img=None,
-        num_init_img_tokens=None,
         argmax=False,
         dynamic=True,
         debug=False,
@@ -504,7 +470,7 @@ class BERT(nn.Module):
             visual=visual,
             erase_visual=erase_visual,
             erase_visual_half=
-            True,  # TODO: always erase half during generation if erase visual
+            True,  # NOTE: always erase half during generation if erase visual
             vc_mode=vc_mode,
             face_mode=face_mode,
             return_loss=False)
@@ -530,21 +496,10 @@ class BERT(nn.Module):
 
         return images, pnag_samples, img_seq
 
-    def decode_masks(self, mask):
-        mask = rearrange(mask,
-                         'b (t h w) -> (b t) 1 h w',
-                         h=self.image_fmap_size,
-                         w=self.image_fmap_size)
-        patch_size = self.image_size // self.image_fmap_size
-        mask_ = torch.repeat_interleave(
-            torch.repeat_interleave(mask, patch_size, 2), patch_size, 3)
-        mask = F.pad(mask_, (0, 0, 0, 0, 0, 2))  # red
-        return mask
-
     def transformer_forward(self, tokens):
         # tokens are embeddings
         out = self.transformer(tokens)
-        if self.stable:  # TODO: should we keep this?
+        if self.stable:
             out = self.norm_by_max(out)
         return out
 
@@ -553,7 +508,6 @@ class BERT(nn.Module):
                             'b (t n) -> (b t) n',
                             n=self.image_seq_len)
         images = self.vae.decode(img_seq)
-        # images = rearrange(images, '(b t) c h w -> b t c h w', t = self.num_targets)
         return images
 
     def decode_masks(self, mask):
@@ -567,26 +521,20 @@ class BERT(nn.Module):
         mask = F.pad(mask_, (0, 0, 0, 0, 0, 2))  # red
         return mask
 
-    def transformer_forward(self, tokens):
-        # tokens are embeddings
-        out = self.transformer(tokens)
-        if self.stable:  # TODO: should we keep this?
-            out = self.norm_by_max(out)
-        return out
-
     @torch.no_grad()
     def mask_predict(
         self,
         control_emb,
-        argmax=False,
+        # argmax=False,
         dynamic=True,
         debug=False,
         steps=10,
         preserve=None,
         t_overlap=1,
-        pc_mode=None,
+        # pc_mode=None,
         mp_config=None,
         long_mode='long',
+        **kwargs,
     ):
         def sample_multinomial(logits, temperature=1.):
             logits = logits + temperature * sample_gumbel(logits)
@@ -651,6 +599,7 @@ class BERT(nn.Module):
         target_pos_emb = self.target_pos_emb(fully_masked_emb)
         mask_emb = self.image_emb.weight[self.image_token_lut['[MASK]']]
 
+        # NOTE: steps can overwrite T in mp_config if positive
         Tmax = mp_config['T'] if steps <= 0 else steps
         B = mp_config['B']
 
@@ -692,7 +641,6 @@ class BERT(nn.Module):
             tokens = torch.cat((control_emb_, emb_in + target_pos_emb), dim=1)
             out = self.transformer_forward(tokens)[:, control_seq_len:, :]
             logits = self.to_logits(out)  # b n c
-            #probs = F.softmax(logits, dim=2)
             Y, I_new = sample_multinomial(logits, temp[0])
 
             I_tok = torch.where(preserve_mask1, preserve[i:i + 1, ...], I_new)
@@ -757,7 +705,6 @@ class BERT(nn.Module):
                 jmax = S.argmax()
                 Y, I_tok = YB[jmax], tokB[jmax]
                 if debug:
-                    # print(f'-> t = {t}, rel = {S_rel}, vid = {S_vid}, avg = {S_rel*0.5+S_vid*0.5}')
                     mask_img = self.decode_masks((~masks1[jmax]).float())
                     masked_img = image_samples[-1]
                     masked_img = torch.clamp(masked_img * 0.7 + mask_img * 0.4,
@@ -770,7 +717,6 @@ class BERT(nn.Module):
                         Smax = S[jmax]
                         Imax = I_tok
                     if t - tmax >= 5:  # dynamic termination
-                        # print(f'early stopping at {tmax}!!!')
                         break
                 else:
                     Imax = I_tok
@@ -827,7 +773,6 @@ class BERT(nn.Module):
                                         reshape=False,
                                         which_vae=which_vae)
         images = vae.decode(img_seq)
-        # images = rearrange(images, '(b t) c h w -> b t c h w', t = self.num_targets)
         return images
 
     @torch.no_grad()
@@ -843,14 +788,6 @@ class BERT(nn.Module):
         img_code = rearrange(img_seq, '(b t) n -> b t n', t=t)
         img_embd = self.image_emb(img_code)
         return img_code, img_embd
-
-    @torch.no_grad()
-    def update_memory_bank(self, sample):
-        batch_size_t = sample.shape[0]
-        ptr = int(self.q_ptr)
-        self.q[ptr:ptr + batch_size_t, :] = sample
-        ptr = (ptr + batch_size_t) % self.q_len
-        self.q_ptr[0] = ptr
 
     def random_erase_codebook(self, image, eraser, erase_half=False):
         image = rearrange(image,
@@ -929,19 +866,17 @@ class BERT(nn.Module):
 
     def swap_one_frame_along_batch(self, tokens, t=1):
         tokens_shuffled = tokens.detach().clone()
-        # if len(tokens.shape) == 4:
-        #     b, t, l, c = tokens.shape
-        # else:
         b, n, c = tokens.shape
         tokens_shuffled = tokens_shuffled.reshape(b, t, n // t, -1)
         idx = np.random.randint(0, t, b)
-        # perm_idx = randperm(b)
-        # frames_shuffled = tokens_shuffled[range(b),idx,...][perm_idx,...]
-        frames_shuffled = torch.cat(torch.chunk(tokens_shuffled[range(b), idx,
-                                                                ...],
-                                                2,
-                                                dim=0)[::-1],
-                                    dim=0)
+        frames_shuffled = torch.cat(
+            torch.chunk(
+                tokens_shuffled[range(b), idx, ...],
+                2,
+                dim=0
+            )[::-1],
+            dim=0
+        )
         tokens_shuffled[range(b), idx, ...] = frames_shuffled
         tokens_shuffled = tokens_shuffled.reshape(b, n, c)
         return tokens_shuffled
@@ -954,25 +889,18 @@ class BERT(nn.Module):
         target=None,
         mask=None,
         return_loss=False,
-        return_fake=False,
-        t_cond=None,
         rel=False,
-        fdl=False,
         vid=False,
         erase_visual=False,
         erase_visual_half=False,
         msm_strategy_prob=[0.7, 0.1, 0.1, 0.1],
         msm_bernoulli_prob=[0.2, 0.5],
-        relvid_bernoulli_prob=[0.1, 0.9],
+        # relvid_bernoulli_prob=[0.1, 0.9],
         rel_no_fully_masked=False,
         vid_strategy_prob=[0.25, 0.25, 0.25, 0.25],
         negvc=False,
         visual_neg=None,
         text_neg=None,
-        visual_pos=None,
-        text_pos=None,
-        static_image_as_neg=False,
-        aug_static_image_as_neg=False,
         pc_prob=0,
         vc_mode=None,
         face_mode=None,
@@ -980,17 +908,14 @@ class BERT(nn.Module):
         **kwargs,
     ):
         # visual and target are lists or 5d tensors (B, T, C, H, W)
-
         device, total_seq_len = text[0].device, self.total_seq_len
-        # text_shape = [len(text), self.text_seq_len]
         if self.fixed_language_model is None:
             text_shape = text.shape
-        else:
-            text_shape = [text.shape[0],
-                          1]  # TODO: use embedding which takes a single token
+        else:  # NOTE: use embedding which takes a single token (from say RoBERTa)
+            text_shape = [text.shape[0], 1]
         batch_size = text_shape[0]
 
-        # Prepend [REL] [FDL]
+        # NOTE: Prepend [REL]
 
         before_tok = self.get_special_token(self.before_control_tok,
                                             batch_size, device)
@@ -1001,9 +926,8 @@ class BERT(nn.Module):
         if negvc:
             control_neg_emb = before_emb
 
-        # make sure padding in text tokens get unique padding token id
+        # NOTE: make sure padding in text tokens get unique padding token id
 
-        text_feature_before, text_feature_after = None, None
         if self.fixed_language_model is None:
             assert text.shape[
                 -1] == self.text_seq_len, f'the length {text.shape[-1]} of the text tokens you passed in does not have the correct length ({self.text_seq_len})'
@@ -1014,16 +938,13 @@ class BERT(nn.Module):
             text_emb += self.text_pos_emb(
                 torch.arange(text_shape[1], device=device))
         else:
-            # text is a single embedding
             text_emb = self.text_feature_mapping(text)
-            if self.clip_text_emb == 'before':
-                text_feature_before = self.to_logits_txt(text_emb)
             text_emb = text_emb.unsqueeze(1)
 
         control_emb = torch.cat((control_emb, text_emb), dim=1)
         control_seq_len += text_emb.shape[1]
         if negvc:
-            # TODO: current text_neg does not guarantee to be neg
+            # NOTE: current text_neg does not guarantee to be neg
             text_neg = torch.where(text_neg == 0, text_range, text_neg)
             text_neg_emb = self.text_emb(text_neg)
             text_neg_emb += self.text_pos_emb(
@@ -1060,22 +981,7 @@ class BERT(nn.Module):
             control_emb = torch.cat((control_emb, visual_emb), dim=1)
             control_seq_len += visual.shape[1]
 
-        # if negvc and exists(visual_neg) and len(visual_neg):
-        #     visual_neg = self.get_image_tokens(visual_neg, insert_sep = self.insert_sep, which_vae = 'cvae')
-        #     # TODO: hard coded for color+shape+bg
-        #     mask_neg = torch.zeros(batch_size, self.num_visuals, device=device)
-        #     nn = self.num_visuals-1
-        #     for i in range(batch_size):
-        #         ss = np.binary_repr(random.randint(1, 2**nn-1), width=nn)
-        #         for j in range(nn):
-        #             mask_neg[i,j] = ss[j]=='1'
-        #     mask_neg = torch.repeat_interleave(mask_neg, self.image_seq_len+self.insert_sep, 1)
-        #     visual_neg = torch.where(mask_neg==1, visual_neg, visual)
-        #     visual_neg_emb = self.visual_emb(visual_neg) if self.visual_emb else self.image_emb(visual_neg)
-        #     visual_neg_emb += visual_pos_emb
-        #     control_neg_emb = torch.cat((control_neg_emb, visual_neg_emb), dim = 1)
-
-        # Append [VID]
+        # NOTE: Append [VID]
         after_tok = self.get_special_token(self.after_control_tok, batch_size,
                                            device)
         after_emb = self.special_emb(after_tok)
@@ -1093,12 +999,12 @@ class BERT(nn.Module):
             target_orig = target.detach().clone()
             target = self.get_image_tokens(target)
 
-        # Masked Sequence Modeling
-        # Masking strategies:
-        #  (1) randomly mask a number of tokens;
-        #  (2) mask all tokens;
-        #  (3) mask within boxed areas;
-        #  (4) mask outside boxed areas;
+        # NOTE: Masked Sequence Modeling
+        #   Masking strategies:
+        #     (1) randomly mask a number of tokens;
+        #     (2) mask all tokens;
+        #     (3) mask within boxed areas;
+        #     (4) mask outside boxed areas;
 
         mask1_ = []
         not_fully_masked = torch.ones(batch_size, device=device)
@@ -1146,9 +1052,6 @@ class BERT(nn.Module):
         tokens_msm = torch.cat(
             (control_emb, target_emb_masked + target_pos_emb), dim=1)
         out = self.transformer_forward(tokens_msm)
-        if self.clip_text_emb == 'after':
-            text_feature_after = self.to_logits_txt(out[:,
-                                                        self.txt_tok_index, :])
         out_msm = out[:, control_seq_len:, :]  # b n d
         logits_msm = self.to_logits(out_msm)
         loss_msm = F.cross_entropy(logits_msm[~mask1], target[~mask1])
@@ -1158,25 +1061,11 @@ class BERT(nn.Module):
                                   self.num_image_tokens,
                                   device=device).scatter(
                                       2, target.unsqueeze(2), 1)
-        if return_fake:
-            sample_prob = F.gumbel_softmax(logits_msm,
-                                           tau=1.,
-                                           hard=True,
-                                           dim=2)
-            sample_prob = torch.where(mask1.unsqueeze(2), target_prob,
-                                      sample_prob)
-            sample_prob = rearrange(sample_prob,
-                                    'b (t n) c -> (b t) n c',
-                                    n=self.image_seq_len)
-            fake_sample = self.vae.decode_train(sample_prob)
-            fake_sample = rearrange(fake_sample,
-                                    '(b t) c h w -> b t c h w',
-                                    t=self.num_targets)
 
-        # Relevance Estimation Task
+        # NOTE: Relevance Estimation Task
 
         if rel:
-            # assert text_shape[0] >= 2 and text_shape[0] % 2 == 0  # for REL swapping
+            assert text_shape[0] >= 2 and text_shape[0] % 2 == 0  # for REL swapping
             if negvc:
                 tokens_neg_rel = torch.cat(
                     (control_neg_emb, target_emb_masked + target_pos_emb),
@@ -1218,12 +1107,11 @@ class BERT(nn.Module):
         else:
             loss_rel = torch.tensor(0.0, device=device)
 
-        # Continuity Estimation Task
+        # NOTE: Continuity Estimation Task
 
         if vid and self.num_targets > 1:
             weight_pos = 1
-            weight_neg = 0.5 / (static_image_as_neg + aug_static_image_as_neg
-                                ) if static_image_as_neg else 1
+            weight_neg = 1
             # get warped frames
             target_warp = warp(target_orig, vid_strategy_prob)
             target_warp = self.get_image_tokens(target_warp)
@@ -1258,10 +1146,4 @@ class BERT(nn.Module):
         else:
             loss_vid = torch.tensor(0.0, device=device)
 
-        loss_fdl = torch.tensor(0.0, device=device)
-
-        self.current_step += 1
-
-        if return_fake:
-            return loss_msm, loss_rel, loss_fdl, loss_vid, fake_sample, text_feature_before, text_feature_after
-        return loss_msm, loss_rel, loss_fdl, loss_vid, None, text_feature_before, text_feature_after
+        return loss_msm, loss_rel, loss_vid

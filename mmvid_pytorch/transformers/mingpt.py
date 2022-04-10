@@ -144,41 +144,6 @@ class Block(nn.Module):
         return x
 
 
-# class Block_wo_attn(nn.Module):
-#     """ an unassuming Transformer block """
-#     def __init__(self, config):
-#         super().__init__()
-#         self.ln1 = nn.LayerNorm(config.n_embd)
-#         self.ln2 = nn.LayerNorm(config.n_embd)
-#         # self.attn = CausalSelfAttention(config)
-#         self.mlp = nn.Sequential(
-#             nn.Linear(config.n_embd, 4 * config.n_embd),
-#             nn.GELU(),  # nice
-#             nn.Linear(4 * config.n_embd, config.n_embd),
-#             nn.Dropout(config.resid_pdrop),
-#         )
-
-#     def forward(self, x):
-#         x = x + self.ln1(x)
-#         x = x + self.mlp(self.ln2(x))
-#         return x
-
-# class Classifier(nn.Module):
-#     def __init__(self, config):
-#         super().__init__()
-#         self.drop = nn.Dropout(config.embd_pdrop)
-#         self.blocks = nn.Sequential(*[Block_wo_attn(config) for _ in range(config.n_layer)])
-#         self.ln_f = nn.LayerNorm(config.n_embd)
-#         self.head = nn.Linear(config.n_embd, config.n_class, bias=False)
-
-#     def forward(self, x):
-#         x = self.drop(x)
-#         x = self.blocks(x)
-#         x = self.ln_f(x)
-#         logits = self.head(x)
-#         return logits
-
-
 class GPT(nn.Module):
     """  the full GPT language model, with a context size of block_size """
     def __init__(self,

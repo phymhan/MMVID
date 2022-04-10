@@ -10,8 +10,6 @@ import PIL
 from PIL import Image
 import decord
 decord.bridge.set_bridge("torch")
-import pdb
-st = pdb.set_trace
 
 import torch
 from torch.utils.data import Dataset

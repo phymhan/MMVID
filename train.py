@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-import shutil
 import random
 
 from datetime import datetime
@@ -175,16 +174,6 @@ def main_worker(gpu, ngpus_per_node, args):
         os.makedirs(log_dir, exist_ok=True)
         os.makedirs(log_dir / 'samples', exist_ok=True)
         os.makedirs(log_dir / 'weights', exist_ok=True)
-        utils.print_args(None, args)
-        if args.ar:
-            shutil.copyfile('dalle_pytorch/dalle_artv.py',
-                            log_dir / 'dalle_artv.py.txt')
-        elif args.dm:
-            shutil.copyfile('dalle_pytorch/dalle_absorb.py',
-                            log_dir / 'dalle_absorb.py.txt')
-        else:
-            shutil.copyfile('dalle_pytorch/dalle_bert.py',
-                            log_dir / 'dalle_bert.py.txt')
 
     webpage = None
     if args.use_html and is_root_worker():
@@ -228,21 +217,16 @@ def main_worker(gpu, ngpus_per_node, args):
         num_text_tokens=tokenizer.vocab_size if tokenizer else 0,
         text_seq_len=args.text_seq_len,
         dim=args.dim,
-        depth=args.depth,
-        heads=args.heads,
-        dim_head=args.dim_head,
-        reversible=args.reversible,
         loss_img_weight=args.loss_img_weight,
-        attn_types=args.attn_types,
         text_feature_dim=text_feature_dim,
         fixed_language_model=args.fixed_language_model,
         text_emb_bottleneck=args.text_emb_bottleneck,
-        pretrained_transformer=args.pretrained_transformer,
+        which_transformer=args.which_transformer,
         num_targets=args.num_targets,
         num_visuals=args.num_visuals,
         use_separate_visual_emb=args.use_separate_visual_emb,
         insert_sep=args.insert_sep,
-        clip_text_emb=args.clip_text_emb,
+        openai_clip_path=args.openai_clip_model_path,
     )
 
     # if not resume and dalle_path is given, load weights
@@ -258,16 +242,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # initialize DALL-E / BERT and optimizer
     if args.ar:
-        from dalle_pytorch.dalle_artv import DALLE
+        from mmvid_pytorch.dalle_artv import DALLE
         dalle = DALLE(vae=vae, cvae=cvae, **dalle_params)
-    elif args.dm:
-        from dalle_pytorch.dalle_absorb import AbsorbingDiffusion
-        dalle_params['num_timesteps'] = args.dm_timesteps
-        dalle_params['use_time_embedding'] = args.dm_use_time_embedding
-        dalle_params['use_time_token'] = args.dm_use_time_token
-        dalle = AbsorbingDiffusion(vae=vae, cvae=cvae, **dalle_params)
     else:
-        from dalle_pytorch.dalle_bert import BERT
+        from mmvid_pytorch.dalle_bert import BERT
         dalle = BERT(vae=vae, cvae=cvae, **dalle_params)
     if args.fp16:
         dalle = dalle.half()
@@ -310,15 +288,6 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.num_workers,
         pin_memory=True,
     )
-
-    # distr_dalle, distr_opt, distr_dl = dalle, opt, dl
-
-    # clipper
-    clipper = None
-    if args.clip_text_emb is not None:
-        clipper = get_clipper(args)
-        clipper.cuda()
-        requires_grad(clipper, False)
 
     if is_root_worker():
         with open(log_file_name, 'a+') as f:
@@ -383,7 +352,7 @@ def main_worker(gpu, ngpus_per_node, args):
         target = frames[:, :args.num_targets, ...]
 
         # Train dalle
-        loss_msm, loss_rel, _, loss_vid, _, _, _ = dalle(
+        loss_msm, loss_rel, loss_vid = dalle(
             text,
             visual=visuals if
             (args.visual and
@@ -391,7 +360,6 @@ def main_worker(gpu, ngpus_per_node, args):
             target=target,
             erase_visual=args.rand_visual,
             return_loss=True,
-            return_fake=False,
             rel=args.beta_rel > 0,
             vid=args.beta_vid > 0,
             msm_strategy_prob=args.msm_strategy_prob,
@@ -402,17 +370,16 @@ def main_worker(gpu, ngpus_per_node, args):
             negvc=args.negvc,
             visual_neg=visuals_neg if (args.negvc and args.visual) else None,
             text_neg=text_neg if args.negvc else None,
-            visual_pos=None,
+            # visual_pos=None,
             pc_prob=args.pc_prob,
             vc_mode=args.vc_mode,
-            face_mode=None,
+            face_mode=None,  # NOTE: face_mode is used in testing, for specifying the desired occlusion pattern
             visual_aug_mode=args.visual_aug_mode,
-            time_schedule=args.dm_time_schedule,
-            mask_schedule=args.dm_mask_schedule,
-            loss_type=args.dm_loss_type,
+            # time_schedule=args.dm_time_schedule,
+            # mask_schedule=args.dm_mask_schedule,
+            # loss_type=args.dm_loss_type,
         )
-        loss = (args.beta_msm * loss_msm + args.beta_rel * loss_rel +
-                args.beta_vid * loss_vid)
+        loss = args.beta_msm * loss_msm + args.beta_rel * loss_rel + args.beta_vid * loss_vid
 
         opt.zero_grad()
         loss.backward()

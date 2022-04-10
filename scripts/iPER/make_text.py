@@ -5,7 +5,7 @@ import shutil
 import sys
 curr_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(str(Path(curr_path).parent))
-# from dalle_pytorch.loader import TextVideoDataset
+# from mmvid_pytorch.loader import TextVideoDataset
 from tqdm import tqdm
 import pickle
 import torch

@@ -18,9 +18,6 @@ decord.bridge.set_bridge("torch")
 
 import mm_vox_celeb.pcfg as pcfg
 
-import pdb
-
-st = pdb.set_trace
 
 ATTR = [
     '5_o_Clock_Shadow', 'Arched_Eyebrows', 'Attractive', 'Bags_Under_Eyes',

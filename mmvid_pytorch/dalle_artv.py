@@ -1,18 +1,15 @@
 import random
 import numpy as np
-import pdb
-
-st = pdb.set_trace
 
 import torch
-from torch import nn, einsum
+from torch import nn
 import torch.nn.functional as F
 import torchvision.transforms as T
 from axial_positional_embedding import AxialPositionalEmbedding
 from einops import rearrange
 
-from dalle_pytorch.transformer import Transformer, DivideMax
-from dalle_pytorch.modules import AxialPositionalEmbeddingList
+from mmvid_pytorch.modules import AxialPositionalEmbeddingList
+from utils.utils import DivideMax
 
 # helpers
 
@@ -112,26 +109,26 @@ class DALLE(nn.Module):
         cvae=None,
         num_text_tokens=10000,
         text_seq_len=256,
-        depth,
-        heads=8,
-        dim_head=64,
-        reversible=False,
-        attn_dropout=0.,
-        ff_dropout=0,
-        sparse_attn=False,
-        attn_types=None,
+        # depth,
+        # heads=8,
+        # dim_head=64,
+        # reversible=False,
+        # attn_dropout=0.,
+        # ff_dropout=0,
+        # sparse_attn=False,
+        # attn_types=None,
         loss_img_weight=7,
         stable=False,
-        text_feature_dim=0,
-        fixed_language_model=None,
-        pretrained_transformer='none',
+        # text_feature_dim=0,
+        # fixed_language_model=None,
+        which_transformer='none',
         max_time_len=16,
         num_visuals=1,
         num_targets=1,
-        use_separate_visual_emb=False,
-        insert_sep=False,
-        text_emb_bottleneck=False,
-        clip_text_emb=None,
+        # use_separate_visual_emb=False,
+        # insert_sep=False,
+        # text_emb_bottleneck=False,
+        **kwargs,
     ):
         super().__init__()
         # assert isinstance(vae, (DiscreteVAE, OpenAIDiscreteVAE, VQGanVAE1024)), 'vae must be an instance of DiscreteVAE'
@@ -186,9 +183,9 @@ class DALLE(nn.Module):
 
         self.special_token_lut = {
             '[REL]': 0,
-            '[FDL]': 1,
-            '[SUM]': 2,
-            '[MASK]': 3,
+            '[ST1]': 1,
+            '[ST2]': 2,
+            '[ST3]': 3,
         }
         self.num_special_tokens = len(self.special_token_lut)
         self.num_estimation_tokens = 2  # rel, fdl
@@ -197,7 +194,7 @@ class DALLE(nn.Module):
 
         seq_len = text_seq_len + target_seq_len + visual_seq_len
         if num_visuals > 0:
-            total_tokens = num_text_tokens + num_image_tokens + num_visual_tokens  # TODO: AR visual
+            total_tokens = num_text_tokens + num_image_tokens + num_visual_tokens
         else:
             total_tokens = num_text_tokens + num_image_tokens
         self.total_tokens = total_tokens
@@ -208,29 +205,19 @@ class DALLE(nn.Module):
         set_requires_grad(self.vae, False)  # freeze VAE from being trained
         set_requires_grad(self.cvae, False)  # freeze VAE from being trained
 
-        self.pretrained_transformer = pretrained_transformer
-        if pretrained_transformer.startswith('vqgan'):
-            from dalle_pytorch.transformers.vqgan_model import VQGanTransformer
-            self.transformer = VQGanTransformer(pretrained_transformer)
-        elif pretrained_transformer.startswith('openai_clip'):
-            from dalle_pytorch.transformers.clip_model import OpenAICLIPTransformer
-            self.transformer = OpenAICLIPTransformer(seq_len,
-                                                     pretrained_transformer)
-        elif pretrained_transformer in ['none',
-                                        'default']:  # train from scratch
-            self.transformer = Transformer(dim=dim,
-                                           causal=True,
-                                           seq_len=seq_len,
-                                           depth=depth,
-                                           heads=heads,
-                                           dim_head=dim_head,
-                                           reversible=reversible,
-                                           attn_dropout=attn_dropout,
-                                           ff_dropout=ff_dropout,
-                                           attn_types=attn_types,
-                                           image_fmap_size=image_fmap_size,
-                                           sparse_attn=sparse_attn,
-                                           stable=stable)
+        self.which_transformer = which_transformer
+        if which_transformer.startswith('vqgan'):
+            from mmvid_pytorch.transformers.vqgan_model import VQGanTransformer
+            self.transformer = VQGanTransformer(which_transformer)
+        elif which_transformer.startswith('openai_clip'):
+            from mmvid_pytorch.transformers.clip_model import OpenAICLIPTransformer
+            self.transformer = OpenAICLIPTransformer(
+                seq_len,
+                which_transformer,
+                model_path=kwargs['openai_clip_path'],
+            )
+        else:
+            raise NotImplementedError
 
         self.stable = stable
 
@@ -255,7 +242,6 @@ class DALLE(nn.Module):
             ) == 0).unsqueeze(0)
 
         self.register_buffer('logits_mask', logits_mask, persistent=False)
-        # self.loss_vis_weight = loss_vis_weight
         self.loss_vis_weight = 1.
         self.loss_img_weight = loss_img_weight
 
@@ -277,7 +263,6 @@ class DALLE(nn.Module):
         temperature=1.,
         img=None,
         num_init_img_tokens=None,
-        t_cond=None,
         argmax=False,
         dynamic=True,
         debug=False,
@@ -286,7 +271,6 @@ class DALLE(nn.Module):
         vc_mode=None,
         face_mode=None,
         mp_config=None,
-        test_new_mask_predict=False,
     ):
         vae, text_seq_len, target_seq_len, num_control_tokens = self.vae, self.text_seq_len, self.target_seq_len, self.num_control_tokens
         total_len = text_seq_len + target_seq_len
@@ -461,27 +445,19 @@ class DALLE(nn.Module):
         target=None,
         mask=None,
         return_loss=False,
-        return_fake=False,
-        t_cond=None,
-        rel=False,
-        fdl=False,
-        vid=False,
+        # rel=False,
+        # vid=False,
         erase_visual=False,
         erase_visual_half=False,
-        msm_strategy_prob=[0.7, 0.1, 0.1, 0.1],
-        msm_bernoulli_prob=[0.2, 0.5],
-        relvid_bernoulli_prob=[0.1, 0.9],
-        rel_no_fully_masked=False,
-        vid_strategy_prob=[0.25, 0.25, 0.25, 0.25],
-        negvc=False,
-        posvc=False,
-        visual_neg=None,
-        text_neg=None,
-        visual_pos=None,
-        text_pos=None,
-        static_image_as_neg=False,
-        aug_static_image_as_neg=False,
-        pc_prob=0,
+        # msm_strategy_prob=[0.7, 0.1, 0.1, 0.1],
+        # msm_bernoulli_prob=[0.2, 0.5],
+        # relvid_bernoulli_prob=[0.1, 0.9],
+        # rel_no_fully_masked=False,
+        # vid_strategy_prob=[0.25, 0.25, 0.25, 0.25],
+        # negvc=False,
+        # visual_neg=None,
+        # text_neg=None,
+        # pc_prob=0,
         vc_mode=None,
         face_mode=None,
         visual_aug_mode=None,
@@ -600,4 +576,4 @@ class DALLE(nn.Module):
                                                     self.loss_vis_weight + 1)
 
         zero = torch.tensor(0.0, device=device)
-        return loss, zero, zero, zero, None, None, None
+        return loss, zero, zero

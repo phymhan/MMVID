@@ -1,15 +1,10 @@
 import os
-import sys
-import argparse
-from pathlib import Path
-from copy import deepcopy
-from datetime import datetime
-import shutil
 import random
 
 import numpy as np
 
 import torch
+import torch.nn as nn
 from torchvision.io import write_video
 from torchvision import utils
 
@@ -20,6 +15,16 @@ class Config:
             setattr(self, k, v)
 
 
+class DivideMax(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+
+    def forward(self, x):
+        maxes = x.amax(dim=self.dim, keepdim=True)
+        return x / maxes
+
+
 def seed_everything(seed=42):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -28,70 +33,6 @@ def seed_everything(seed=42):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
-
-
-# borrowed from: https://stackoverflow.com/questions/715417/converting-from-a-string-to-boolean-in-python
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
-def print_args(parser, args):
-    args = deepcopy(args)
-    if hasattr(args, 'parser'):
-        delattr(args, 'parser')
-    message = f"Name: {getattr(args, 'name', 'NA')} Time: {datetime.now()}\n"
-    message += '--------------- Arguments ---------------\n'
-    for k, v in sorted(vars(args).items()):
-        comment = ''
-        default = None if parser is None else parser.get_default(k)
-        if v != default:
-            comment = '\t[default: %s]' % str(default)
-        message += '{:>25}: {:<30}{}\n'.format(str(k), str(v), comment)
-    message += '------------------ End ------------------'
-    # print(message)  # suppress messages to std out
-
-    # save to the disk
-    log_dir = Path(args.log_dir)
-    os.makedirs(log_dir, exist_ok=True)
-    file_name = log_dir / 'args.txt'
-    with open(file_name, 'a+') as f:
-        f.write(message)
-        f.write('\n\n')
-
-    # save command to disk
-    file_name = log_dir / 'cmd.txt'
-    with open(file_name, 'a+') as f:
-        f.write(f'Time: {datetime.now()}\n')
-        if os.getenv('CUDA_VISIBLE_DEVICES'):
-            f.write('CUDA_VISIBLE_DEVICES=%s ' %
-                    os.getenv('CUDA_VISIBLE_DEVICES'))
-        f.write('python3 ')
-        f.write(' '.join(sys.argv))
-        f.write('\n\n')
-
-    # backup train code
-    shutil.copyfile(sys.argv[0],
-                    log_dir / f'{os.path.basename(sys.argv[0])}.txt')
-
-
-def print_models(models, args):
-    if not isinstance(models, (list, tuple)):
-        models = [models]
-    log_dir = args.log_dir
-    os.makedirs(log_dir, exist_ok=True)
-    file_name = log_dir / 'models.txt'
-    with open(file_name, 'w') as f:
-        f.write(
-            f"Name: {getattr(args, 'name', 'NA')} Time: {datetime.now()}\n{'-'*50}\n"
-        )
-        for model in models:
-            f.write(str(model))
-            f.write("\n\n")
 
 
 def save_image(ximg, path):
@@ -110,7 +51,7 @@ def save_video(xseq, path):
 
 
 """
-copied from VQGAN main
+Copied from VQGAN main.py
 """
 import importlib
 

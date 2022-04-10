@@ -7,7 +7,13 @@ import torch
 import torch.nn.functional as F
 import torchvision
 
+from einops import rearrange
+
 from utils import utils_html
+
+
+def exists(val):
+    return val is not None
 
 
 def get_dataset(args, tokenizer):
@@ -19,7 +25,7 @@ def get_dataset(args, tokenizer):
     else:
         keys = None
     if args.dataset == 'video_text':
-        from dalle_pytorch.loader import TextVideoDataset
+        from mmvid_pytorch.loader import TextVideoDataset
         ds = TextVideoDataset(
             args.image_text_folder,
             text_len=args.text_seq_len,
@@ -40,7 +46,7 @@ def get_dataset(args, tokenizer):
             keys=keys,
         )
     elif args.dataset == 'mp4_text':
-        from dalle_pytorch.loader import TextMP4Dataset
+        from mmvid_pytorch.loader import TextMP4Dataset
         ds = TextMP4Dataset(
             args.image_text_folder,
             text_len=args.text_seq_len,
@@ -59,7 +65,7 @@ def get_dataset(args, tokenizer):
             keys=keys,
         )
     elif args.dataset == 'imagestack_text':
-        from dalle_pytorch.loader import TextImageStackDataset
+        from mmvid_pytorch.loader import TextImageStackDataset
         ds = TextImageStackDataset(
             args.image_text_folder,
             text_len=args.text_seq_len,
@@ -76,7 +82,7 @@ def get_dataset(args, tokenizer):
             cache=args.dataset_cache,
         )
     elif args.dataset == 'shape_attr':
-        from dalle_pytorch.loader_ext import ShapeAttrDataset
+        from mmvid_pytorch.loader_ext import ShapeAttrDataset
         ds = ShapeAttrDataset(
             args.image_text_folder,
             text_len=args.text_seq_len,
@@ -96,7 +102,7 @@ def get_dataset(args, tokenizer):
             return_neg=args.negvc,
         )
     elif args.dataset == 'vox':
-        from dalle_pytorch.loader_ext import VoxDataset
+        from mmvid_pytorch.loader_ext import VoxDataset
         ds = VoxDataset(
             args.image_text_folder,
             text_len=args.text_seq_len,
@@ -116,7 +122,7 @@ def get_dataset(args, tokenizer):
             attr_mode=args.attr_mode,
         )
     elif args.dataset == 'iper':
-        from dalle_pytorch.loader_ext import iPERDataset
+        from mmvid_pytorch.loader_ext import iPERDataset
         ds = iPERDataset(
             args.image_text_folder,
             text_len=args.text_seq_len,
@@ -152,28 +158,28 @@ def get_vae_model(which_vae,
     if args is not None and args.dalle_path:
         vae_path = None
     if which_vae == 'vqgan1024':
-        from dalle_pytorch.vae import VQGanVAE1024
+        from mmvid_pytorch.vae import VQGanVAE1024
         vae = VQGanVAE1024(vae_path=vae_path, image_size=image_size)
         vae_params = None
-    elif which_vae == 'openai':
-        from dalle_pytorch.vae import OpenAIDiscreteVAE
-        vae = OpenAIDiscreteVAE()
-        vae.enc.blocks.output.conv.use_float16 = True
-        vae_params = None
-    elif which_vae == 'custom':
-        from dalle_pytorch.vae import DiscreteVAE
-        if exists(vae_path) and Path(vae_path).exists():
-            loaded_obj = torch.load(str(vae_path))
-            vae_params, vae_weights = loaded_obj['hparams'], loaded_obj[
-                'weights']
-            vae = DiscreteVAE(**vae_params)
-            vae.load_state_dict(vae_weights)
-        elif exists(vae_params):
-            vae = DiscreteVAE(**vae_params)
-        else:
-            raise RuntimeError(
-                "At least one of vae_path and vae_params should exist.")
-    else:
+    # elif which_vae == 'openai':
+    #     from mmvid_pytorch.vae import OpenAIDiscreteVAE
+    #     vae = OpenAIDiscreteVAE()
+    #     vae.enc.blocks.output.conv.use_float16 = True
+    #     vae_params = None
+    # elif which_vae == 'custom':
+    #     from mmvid_pytorch.vae import DiscreteVAE
+    #     if exists(vae_path) and Path(vae_path).exists():
+    #         loaded_obj = torch.load(str(vae_path))
+    #         vae_params, vae_weights = loaded_obj['hparams'], loaded_obj[
+    #             'weights']
+    #         vae = DiscreteVAE(**vae_params)
+    #         vae.load_state_dict(vae_weights)
+    #     elif exists(vae_params):
+    #         vae = DiscreteVAE(**vae_params)
+    #     else:
+    #         raise RuntimeError(
+    #             "At least one of vae_path and vae_params should exist.")
+    else:  # NOTE: See dalle_pytorch if you want to use OpenAI's VAE or custom VAE
         raise NotImplementedError
     return vae, vae_params
 
@@ -198,16 +204,16 @@ def get_optimizer(args, params):
 
 def get_tokenizer(args):
     if args.which_tokenizer == 'yttm':
-        from dalle_pytorch.tokenizer import YttmTokenizer
+        from mmvid_pytorch.tokenizer import YttmTokenizer
         tokenizer = YttmTokenizer(args.bpe_path)
     elif args.which_tokenizer == 'hug':
-        from dalle_pytorch.tokenizer import HugTokenizer
+        from mmvid_pytorch.tokenizer import HugTokenizer
         tokenizer = HugTokenizer(args.bpe_path)
     elif args.which_tokenizer == 'simple':
-        from dalle_pytorch.tokenizer import SimpleTokenizer
+        from mmvid_pytorch.tokenizer import SimpleTokenizer
         tokenizer = SimpleTokenizer()
     elif args.which_tokenizer == 'chinese':
-        from dalle_pytorch.tokenizer import ChineseTokenizer
+        from mmvid_pytorch.tokenizer import ChineseTokenizer
         tokenizer = ChineseTokenizer()
     else:
         raise NotImplementedError
@@ -300,6 +306,7 @@ def get_text_feature_extractor(args):
             return feature
 
     elif args.pretrained_text_feature == 'openai_clip':
+        from tokenizer import SimpleTokenizer
         text_feature_extractor = torch.jit.load(
             "pretrained/ViT-B-32.pt").cuda().eval()
         text_feature_tokenizer = SimpleTokenizer()
@@ -331,7 +338,6 @@ def get_text_feature_extractor(args):
 
 def clip_encode_image(model, image):
     device = image.device
-    # module = model.module
     input_resolution = model.input_resolution.item()
     if image.shape[2] != input_resolution:
         image = F.interpolate(image, (input_resolution, input_resolution))
@@ -439,12 +445,14 @@ def prepare_lr_scheduler(args, optimizer):
 
 
 @torch.no_grad()
-def visualize_train(args,
-                    dalle_module,
-                    tokenizer,
-                    data_batch,
-                    which_iter,
-                    webpage=None):
+def visualize_train(
+    args,
+    dalle_module,
+    tokenizer,
+    data_batch,
+    which_iter,
+    webpage=None
+):
     text_description, text, frames, visuals = data_batch[
         'description'], data_batch['text'], data_batch['target'], data_batch[
             'visual']
@@ -460,17 +468,8 @@ def visualize_train(args,
     LOG_SAMPLE_DIR = args.log_sample_dir
     which_cvae = 'vae' if args.use_cvae is None else 'cvae'
 
-    if args.dm:
-        from functools import partial
-        generate_images = partial(
-            dalle_module.generate_images,
-            sample_mode=args.dm_sample_mode,
-            use_mask_predict=args.dm_mask_predict,
-        )
-    else:
-        generate_images = dalle_module.generate_images
-    pnag_suffix = '_argmax' if args.pnag_argmax else ''
-    pnag_suffix = pnag_suffix + '_dynamic' if args.pnag_dynamic else pnag_suffix
+    generate_images = dalle_module.generate_images
+    pnag_suffix = '_dynamic' if args.pnag_dynamic else ''
     blank_frame_nvc = torch.ones(N_PER_SAMPLE, N_VISUAL, 3, args.image_size,
                                  args.image_size).cuda()
     blank_frame_1 = torch.ones(1, 3, args.image_size, args.image_size).cuda()
@@ -601,7 +600,7 @@ def visualize_train(args,
                 text_repeat,
                 visual=visual,
                 erase_visual=args.rand_visual,
-                argmax=args.pnag_argmax,
+                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -747,7 +746,7 @@ def visualize_train(args,
                 text_repeat,
                 visual=visual_cf,
                 erase_visual=args.rand_visual,
-                argmax=args.pnag_argmax,
+                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -786,7 +785,7 @@ def visualize_train(args,
                 text_repeat,
                 visual=None,
                 erase_visual=args.rand_visual,
-                argmax=args.pnag_argmax,
+                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -805,7 +804,6 @@ def visualize_train(args,
                 ]
                 nrow_web += [N_VISUAL + N_PER_SAMPLE]
             if args.debug:
-                # tmp.insert(0, frames[j,:N_FRAME,...])
                 tmp = torch.cat(tmp, 0)
                 torchvision.utils.save_image(tmp,
                                              LOG_SAMPLE_DIR /
@@ -838,16 +836,18 @@ def visualize_train(args,
 
 
 @torch.no_grad()
-def visualize_test(args,
-                   dalle_module,
-                   tokenizer,
-                   data_batch,
-                   which_iter,
-                   webpage=None,
-                   description=None,
-                   tokenizer2=None,
-                   language_model=None,
-                   **kwargs):
+def visualize_test(
+    args,
+    dalle_module,
+    tokenizer,
+    data_batch,
+    which_iter,
+    webpage=None,
+    description=None,
+    tokenizer2=None,
+    language_model=None,
+    **kwargs
+):
     text_description, text, frames, visuals = data_batch[
         'description'], data_batch['text'], data_batch['target'], data_batch[
             'visual']
@@ -891,24 +891,12 @@ def visualize_test(args,
     LOG_SAMPLE_DIR = args.log_sample_dir
     which_cvae = 'vae' if args.use_cvae is None else 'cvae'
 
-    # TODO: this is previously hardcoded
+    # NOTE: this is previously hardcoded
     args.mask_predict_steps = [args.mp_config['T']]
     args.mask_predict_steps1 = args.mp_config['T']
 
-    if args.dm:
-        from functools import partial
-        generate_images = partial(
-            dalle_module.generate_images,
-            sample_mode=args.dm_sample_mode,
-            use_mask_predict=args.dm_mask_predict,
-        )
-    else:
-        generate_images = dalle_module.generate_images
-    pnag_suffix = '_argmax' if args.pnag_argmax else ''
-    pnag_suffix = pnag_suffix + '_dynamic' if args.pnag_dynamic else pnag_suffix
-    blank_frame_nvc = torch.ones(N_PER_SAMPLE, N_VISUAL, 3, args.image_size,
-                                 args.image_size).cuda()
-    blank_frame_1 = torch.ones(1, 3, args.image_size, args.image_size).cuda()
+    generate_images = dalle_module.generate_images
+    pnag_suffix = '_dynamic' if args.pnag_dynamic else ''
 
     samples_img = []
     captions_img = []
@@ -1048,7 +1036,7 @@ def visualize_test(args,
                 text_repeat,
                 visual=visual,
                 erase_visual=args.rand_visual,
-                argmax=args.pnag_argmax,
+                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -1193,7 +1181,7 @@ def visualize_test(args,
                 text_repeat,
                 visual=visual_cf,
                 erase_visual=args.rand_visual,
-                argmax=args.pnag_argmax,
+                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -1237,7 +1225,7 @@ def visualize_test(args,
                     text_repeat,
                     visual=visual_prompt,
                     erase_visual=args.rand_visual,
-                    argmax=args.pnag_argmax,
+                    # argmax=args.pnag_argmax,
                     dynamic=args.pnag_dynamic,
                     debug=args.debug,
                     mask_predict_steps=mp_steps,
@@ -1282,7 +1270,6 @@ def visualize_test(args,
             name=which_iter,
             nrow=nrow_web,
             width=min(IMAGE_SIZE, 256),
-            video_format=args.video_format,
         )
 
 
@@ -1344,8 +1331,8 @@ def visualize_long(args,
     args.mask_predict_steps1 = 0
 
     generate_images = dalle_module.generate_images
-    pnag_suffix = '_argmax' if args.pnag_argmax else ''
-    pnag_suffix = pnag_suffix + '_dynamic' if args.pnag_dynamic else pnag_suffix
+    # pnag_suffix = '_argmax' if args.pnag_argmax else ''
+    pnag_suffix = '_dynamic' if args.pnag_dynamic else ''
     blank_frame_nvc = torch.ones(N_PER_SAMPLE, N_VISUAL, 3, args.image_size,
                                  args.image_size).cuda()
     blank_frame_1 = torch.ones(1, 3, args.image_size, args.image_size).cuda()
@@ -1415,7 +1402,7 @@ def visualize_long(args,
                         text_repeat,
                         visual=visual,
                         erase_visual=args.rand_visual,
-                        argmax=args.pnag_argmax,
+                        # argmax=args.pnag_argmax,
                         dynamic=args.pnag_dynamic,
                         debug=args.debug,
                         mask_predict_steps=mp_steps,
@@ -1468,7 +1455,7 @@ def visualize_long(args,
                             text_repeat,
                             visual=visual,
                             erase_visual=args.rand_visual,
-                            argmax=args.pnag_argmax,
+                            # argmax=args.pnag_argmax,
                             dynamic=args.pnag_dynamic,
                             debug=args.debug,
                             mask_predict_steps=mp_steps,
@@ -1547,7 +1534,7 @@ def visualize_long(args,
                             text_repeat,
                             visual=visual,
                             erase_visual=args.rand_visual,
-                            argmax=args.pnag_argmax,
+                            # argmax=args.pnag_argmax,
                             dynamic=args.pnag_dynamic,
                             debug=args.debug,
                             mask_predict_steps=mp_steps,
@@ -1649,7 +1636,7 @@ def visualize_long(args,
                 visual=visuals[j2:j2 + 1, ...].repeat(N_PER_SAMPLE, 1, 1, 1,
                                                       1),
                 erase_visual=args.rand_visual,
-                argmax=args.pnag_argmax,
+                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
@@ -1690,7 +1677,7 @@ def visualize_long(args,
                 text_repeat,
                 visual=None,
                 erase_visual=args.rand_visual,
-                argmax=args.pnag_argmax,
+                # argmax=args.pnag_argmax,
                 dynamic=args.pnag_dynamic,
                 debug=args.debug,
                 mask_predict_steps=mp_steps,
