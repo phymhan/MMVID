@@ -7,4 +7,6 @@ python3 test.py --name test_vox_text_roberta \
     --iters 1 --batch_size 16 --n_per_sample 4 --n_sample 1 \
     --no_debug --mp_T 20 --dalle_path vox_bert_text_txtdrop_roberta_bs24_112k.pt \
     --fixed_language_model roberta-large \
-    --description "a girl."
+    --description "A girl."
+
+# NOTE: --description="A person has no hair." or "A person wears spectacles." or "A person is youthful."

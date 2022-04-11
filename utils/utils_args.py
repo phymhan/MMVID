@@ -389,5 +389,9 @@ def process_args(train=False):
 
         args.relvid_bernoulli_prob = list(
             map(float, args.relvid_bernoulli_prob.split(',')))
+    else:  # test
+        # NOTE: vae weights will be loaded from dalle model checkpoint
+        args.vae_path = ""
+        args.cvae_path = ""  # NOTE: toggle args.use_cvae to use cvae
 
     return args

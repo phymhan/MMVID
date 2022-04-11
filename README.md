@@ -183,7 +183,7 @@ All pretrained models are provided here in [checkpoint folder](https://drive.goo
 | Image and Mask | [pt](https://drive.google.com/file/d/1vcq8la7kpJFqdswfX_KuincRNI6o0h3C/view?usp=sharing) | - |
 | Text and Partial Image | [pt](https://drive.google.com/file/d/1wSBm9erN9VP58m3jRQnB_kBCrXW-RGSg/view?usp=sharing) | - |
 | Image and Video | [pt](https://drive.google.com/file/d/1LGYA9i5KRA1L-5DlM9Bubbo9PiH2RqfG/view?usp=sharing) | - |
-| Text-Augmentation | [pt](https://drive.google.com/file/d/1hLNWvjRI826Q0kElAEx45FiYUgnZC0BP/view?usp=sharing) | - |
+| Text-Augmentation | [pt](https://drive.google.com/file/d/1q-r2PO8qSGunG9w9CjFRbbI9pLO1g_s-/view?usp=sharing) | - |
 
 ### iPER
 |     | Weight |
