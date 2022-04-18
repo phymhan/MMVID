@@ -306,7 +306,7 @@ class BERT(nn.Module):
             self.text_feature_mapping = lambda x: x
         else:
             assert text_feature_dim > 0
-            text_seq_len = 1
+            text_seq_len = 1  # NOTE: if use fixed language model, text_seq_len is 1
             num_text_tokens = 1
             self.text_emb, self.text_pos_emb = None, None
             if text_emb_bottleneck is not None:
@@ -463,7 +463,7 @@ class BERT(nn.Module):
         mp_config=None,
         long_mode='long',
     ):
-        vae, text_seq_len, image_seq_len, num_text_tokens = self.vae, self.text_seq_len, self.image_seq_len, self.num_text_tokens
+        vae = self.vae
 
         control_emb = self(
             text,
@@ -525,13 +525,11 @@ class BERT(nn.Module):
     def mask_predict(
         self,
         control_emb,
-        # argmax=False,
         dynamic=True,
         debug=False,
         steps=10,
         preserve=None,
         t_overlap=1,
-        # pc_mode=None,
         mp_config=None,
         long_mode='long',
         **kwargs,
@@ -549,8 +547,7 @@ class BERT(nn.Module):
             U = torch.rand_like(logit)
             return -torch.log(-torch.log(U + eps) + eps)
 
-        control_seq_len, dim, device = control_emb.shape[1], control_emb.shape[
-            -1], control_emb.device
+        control_seq_len, device = control_emb.shape[1], control_emb.device
         batch_size = 1
         if long_mode == 'long':
             if preserve is None:
@@ -895,7 +892,6 @@ class BERT(nn.Module):
         erase_visual_half=False,
         msm_strategy_prob=[0.7, 0.1, 0.1, 0.1],
         msm_bernoulli_prob=[0.2, 0.5],
-        # relvid_bernoulli_prob=[0.1, 0.9],
         rel_no_fully_masked=False,
         vid_strategy_prob=[0.25, 0.25, 0.25, 0.25],
         negvc=False,
@@ -908,7 +904,7 @@ class BERT(nn.Module):
         **kwargs,
     ):
         # visual and target are lists or 5d tensors (B, T, C, H, W)
-        device, total_seq_len = text[0].device, self.total_seq_len
+        device = text[0].device
         if self.fixed_language_model is None:
             text_shape = text.shape
         else:  # NOTE: use embedding which takes a single token (from say RoBERTa)
@@ -1055,12 +1051,6 @@ class BERT(nn.Module):
         out_msm = out[:, control_seq_len:, :]  # b n d
         logits_msm = self.to_logits(out_msm)
         loss_msm = F.cross_entropy(logits_msm[~mask1], target[~mask1])
-
-        target_prob = torch.zeros(batch_size,
-                                  self.target_seq_len,
-                                  self.num_image_tokens,
-                                  device=device).scatter(
-                                      2, target.unsqueeze(2), 1)
 
         # NOTE: Relevance Estimation Task
 

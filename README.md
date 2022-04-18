@@ -32,7 +32,7 @@ Code for finetuning VQGAN models is provided in [this repo](https://github.com/p
 - [ ] TO DO: add explanation
 - [x] TO DO: add evaluation scripts
 
-For quantitative evaluation, append `--eval_mode eval` to each testing command.
+For quantitative evaluation, append `--eval_mode eval` to each testing command, you can also append `--name_suffix _fvd` to add suffix to the output log directory.
 
 <details>
   <summary>Text-to-Video</summary>

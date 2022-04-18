@@ -1,22 +1,10 @@
-import io
-import sys
-import os
-import sys
-import requests
-import PIL
-import warnings
-import hashlib
-import urllib
-import yaml
 from pathlib import Path
-from tqdm import tqdm
-from math import sqrt, log
+from math import sqrt
 from omegaconf import OmegaConf
 from taming.models.vqgan import VQModel
 
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 from einops import rearrange
 
@@ -31,18 +19,15 @@ class VQGanVAE1024(nn.Module):
         model_filename = 'vqgan.1024.model.ckpt'
         config_filename = 'vqgan.1024.config.yml'
 
-        config_path = str(Path('pretrained') / config_filename)
+        config_path = str(Path('mmvid_pytorch') / 'data' / config_filename)
         config = OmegaConf.load(config_path)
         if image_size:
             config.model.params['ddconfig']['resolution'] = image_size
         model = VQModel(**config.model.params)
 
-        if vae_path is None:
-            model_path = str(Path('pretrained') / model_filename)
-        else:
-            model_path = vae_path
-        state = torch.load(model_path, map_location='cpu')['state_dict']
-        model.load_state_dict(state, strict=False)
+        if vae_path is not None:
+            state = torch.load(vae_path, map_location='cpu')['state_dict']
+            model.load_state_dict(state, strict=False)
 
         self.model = model
 

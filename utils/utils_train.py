@@ -261,7 +261,7 @@ def get_text_feature_extractor(args):
     elif args.pretrained_text_feature == 'openai_clip':
         from tokenizer import SimpleTokenizer
         text_feature_extractor = torch.jit.load(
-            "pretrained/ViT-B-32.pt").cuda().eval()
+            args.openai_clip_model_path).cuda().eval()
         text_feature_tokenizer = SimpleTokenizer()
         text_feature_dim = 512
         context_length = text_feature_extractor.context_length

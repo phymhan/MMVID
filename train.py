@@ -307,7 +307,6 @@ def main_worker(gpu, ngpus_per_node, args):
             vid=args.beta_vid > 0,
             msm_strategy_prob=args.msm_strategy_prob,
             msm_bernoulli_prob=args.msm_bernoulli_prob,
-            relvid_bernoulli_prob=args.relvid_bernoulli_prob,
             vid_strategy_prob=args.vid_strategy_prob,
             rel_no_fully_masked=args.rel_no_fully_masked,
             negvc=args.negvc,
