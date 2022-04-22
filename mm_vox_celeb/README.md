@@ -40,3 +40,5 @@ The processed data needs to be organized in the following way:
 │  │  ├── id11248#yDqlBD8m_b8#00004.txt#000.mp4/
 |  │  ├── id11248#yiNkInm9OKQ#00001.txt#000.mp4/
 ```
+
+The first time you run the dataloader, it will create a cache file (`data/mmvoxceleb_local.pkl`). We also provide a pre-generated cache file [here](https://drive.google.com/file/d/15r1cl8KZvuYN_2BvWrU89nEsfKAfN5kg/view?usp=sharing).

@@ -1,17 +1,8 @@
-from math import log2, sqrt
+import numpy as np
 import torch
-from torch import nn, einsum
-import torch.nn.functional as F
-import torchvision.transforms as T
+from torch import nn
 from axial_positional_embedding import AxialPositionalEmbedding
 from einops import rearrange
-
-import random
-import numpy as np
-import sys
-import pdb
-
-st = pdb.set_trace
 
 
 class AxialPositionalEmbeddingList(nn.Module):

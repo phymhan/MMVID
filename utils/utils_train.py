@@ -10,7 +10,7 @@ import torchvision
 from einops import rearrange
 
 from utils import utils_html
-from utils.utils import mean_pooling, exists
+from utils.utils import mean_pooling
 
 
 def get_dataset(args, tokenizer):
@@ -183,18 +183,9 @@ def get_optimizer(args, params):
 
 
 def get_tokenizer(args):
-    if args.which_tokenizer == 'yttm':
-        from mmvid_pytorch.tokenizer import YttmTokenizer
-        tokenizer = YttmTokenizer(args.bpe_path)
-    elif args.which_tokenizer == 'hug':
-        from mmvid_pytorch.tokenizer import HugTokenizer
-        tokenizer = HugTokenizer(args.bpe_path)
-    elif args.which_tokenizer == 'simple':
+    if args.which_tokenizer == 'simple':
         from mmvid_pytorch.tokenizer import SimpleTokenizer
         tokenizer = SimpleTokenizer()
-    elif args.which_tokenizer == 'chinese':
-        from mmvid_pytorch.tokenizer import ChineseTokenizer
-        tokenizer = ChineseTokenizer()
     else:
         raise NotImplementedError
     return tokenizer

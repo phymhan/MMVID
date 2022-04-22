@@ -109,25 +109,11 @@ class DALLE(nn.Module):
         cvae=None,
         num_text_tokens=10000,
         text_seq_len=256,
-        # depth,
-        # heads=8,
-        # dim_head=64,
-        # reversible=False,
-        # attn_dropout=0.,
-        # ff_dropout=0,
-        # sparse_attn=False,
-        # attn_types=None,
         loss_img_weight=7,
         stable=False,
-        # text_feature_dim=0,
-        # fixed_language_model=None,
         which_transformer='none',
-        max_time_len=16,
         num_visuals=1,
         num_targets=1,
-        # use_separate_visual_emb=False,
-        # insert_sep=False,
-        # text_emb_bottleneck=False,
         **kwargs,
     ):
         super().__init__()
@@ -206,10 +192,7 @@ class DALLE(nn.Module):
         set_requires_grad(self.cvae, False)  # freeze VAE from being trained
 
         self.which_transformer = which_transformer
-        if which_transformer.startswith('vqgan'):
-            from mmvid_pytorch.transformers.vqgan_model import VQGanTransformer
-            self.transformer = VQGanTransformer(which_transformer)
-        elif which_transformer.startswith('openai_clip'):
+        if which_transformer.startswith('openai_clip'):
             from mmvid_pytorch.transformers.clip_model import OpenAICLIPTransformer
             self.transformer = OpenAICLIPTransformer(
                 seq_len,
@@ -261,16 +244,10 @@ class DALLE(nn.Module):
         mask=None,
         filter_thres=0.5,
         temperature=1.,
-        img=None,
-        num_init_img_tokens=None,
-        argmax=False,
-        dynamic=True,
-        debug=False,
         erase_visual=False,
-        mask_predict_steps=10,
         vc_mode=None,
         face_mode=None,
-        mp_config=None,
+        **kwargs,
     ):
         vae, text_seq_len, target_seq_len, num_control_tokens = self.vae, self.text_seq_len, self.target_seq_len, self.num_control_tokens
         total_len = text_seq_len + target_seq_len
@@ -443,7 +420,6 @@ class DALLE(nn.Module):
         text,
         visual=None,
         target=None,
-        mask=None,
         return_loss=False,
         erase_visual=False,
         erase_visual_half=False,
@@ -469,8 +445,6 @@ class DALLE(nn.Module):
         # add <bos>
         bos = 0
         text = F.pad(text, (1, 0), value=bos)  # TODO: !!!
-        if False:  # <eot>
-            text[:, -1] = self.num_text_tokens - 1  # <eot>
 
         text_emb = self.text_emb(text)
         if text_augment == 'noise':

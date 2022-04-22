@@ -3,7 +3,6 @@ axial_positional_embedding
 einops
 omegaconf==2.0.0
 g-mlp-pytorch
-youtokentome
 transformers
 ftfy
 natsort

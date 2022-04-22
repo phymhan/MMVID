@@ -70,7 +70,6 @@ def get_args_base():
     parser.add_argument('--use_html', action='store_true', help='use html output?')
     parser.add_argument("--log_root",
                         type=str,
-                        help="where to save training logs",
                         default='logs', help='root directory for logs')
     parser.add_argument('--seed', default=42, type=int, help='Random seed')
     parser.add_argument('--iters',
@@ -211,7 +210,6 @@ def get_args_base():
 
     parser.add_argument('--ar', action='store_true',
         help='toggle this to use auto-regressive model (ART-V)')
-    parser.add_argument('--dm', action='store_true')
     parser.add_argument('--slow', action='store_true',
         help='toggle this to add speed variants to dataset, used in iPER. Please see iPER dataset for details')
     parser.add_argument('--insert_sep', action='store_true',

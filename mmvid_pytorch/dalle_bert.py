@@ -393,17 +393,7 @@ class BERT(nn.Module):
         self.which_transformer = which_transformer
         mask_prev_index = [self.st1_tok_index, self.vid_tok_index]
         assert which_transformer != 'default'
-        if which_transformer.startswith('vqgan'):
-            from mmvid_pytorch.transformers.vqgan_model import VQGanTransformer
-            self.transformer = VQGanTransformer(
-                which_transformer,
-                seq_len,
-                model_path=kwargs['openai_clip_path'],
-                causal=True,
-                mask_type='mask_prev',
-                mask_kwargs={'index': mask_prev_index},
-            )
-        elif which_transformer.startswith('openai_clip'):
+        if which_transformer.startswith('openai_clip'):
             from mmvid_pytorch.transformers.clip_model import OpenAICLIPTransformer
             self.transformer = OpenAICLIPTransformer(
                 seq_len,
