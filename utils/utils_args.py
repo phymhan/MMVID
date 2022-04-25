@@ -219,7 +219,7 @@ def get_args_base():
     parser.add_argument('--pnag_dynamic', action='store_true',
         help='toggle this to use dynamic stopping in mask predict, inspired by PNAG in UFC-BERT')
     parser.add_argument('--openai_clip_model_path', type=str,
-        default='pretrained/ViT-B-32.pt',
+        default='ViT-B-32.pt',
         help="you can download from here: https://openaipublic.azureedge.net/clip/models/40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af/ViT-B-32.pt",
     )
     return parser

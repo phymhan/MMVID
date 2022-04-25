@@ -22,6 +22,12 @@ This repo contains the code for training and testing, models, and data for MMVID
 
 ## MMVID Code 
 
+You need to download OpenAI's pretrained CLIP model and place it under `./` (or any other directory you want to use, as long as it is consistent with arg `--openai_clip_model_path`),
+
+```bash
+wget https://openaipublic.azureedge.net/clip/models/40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af/ViT-B-32.pt
+```
+
 ## VQGAN
 - [ ] TO DO: add training scripts for VQGAN models
 
@@ -166,6 +172,7 @@ For quantitative evaluation, append `--eval_mode eval` to each testing command, 
 
 
 ## Pretrained Models
+
 - [ ] TO DO: explain the models in checkpoint folder, e.g., mm-voxceleb-model (link)
 
 All pretrained models are provided here in [checkpoint folder](https://drive.google.com/drive/folders/1q_YdEBylrAWeuSleq6Jp58epE3KM-oXK?usp=sharing).
