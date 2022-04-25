@@ -1,6 +1,6 @@
 ## MMVID<br><sub>Show Me What and Tell Me How: Video Synthesis via Multimodal Conditioning (CVPR 2022)</sub>
 
-### [Project](https://snap-research.github.io/MMVID/) | [arXiv](https://arxiv.org/abs/2203.02573) | [PDF](https://arxiv.org/pdf/2203.02573.pdf) | [Dataset](https://github.com/phymhan/MMVID#multimodal-voxceleb-dataset)
+### [Project](https://snap-research.github.io/MMVID/) | [arXiv](https://arxiv.org/abs/2203.02573) | [PDF](https://arxiv.org/pdf/2203.02573.pdf) | [Dataset](#multimodal-voxceleb-dataset)
 
 <div align="center">
   Generated Videos on Multimodal VoxCeleb
@@ -35,9 +35,9 @@ Code for finetuning VQGAN models is provided in [this repo](https://github.com/p
 
 ## Multimodal VoxCeleb
 
-For testing, please download [pretrained models](https://github.com/phymhan/MMVID#pretrained-models) and change the path for `--dalle_path` in the scripts.
+For testing, please download [pretrained models](#pretrained-models) and change the path for `--dalle_path` in the scripts.
 
-For quantitative evaluation, append `--eval_mode eval` to each testing command. Output log directory can be changed by appending `--name_suffix _fvd` to add suffix (example [here](https://github.com/phymhan/MMVID/blob/master/scripts/mmvoxceleb/text_to_video/evaluation.sh)).
+For quantitative evaluation, append `--eval_mode eval` to each testing command. Output log directory can be changed by appending `--name_suffix _fvd` to add suffix (example [here](scripts/mmvoxceleb/text_to_video/evaluation.sh)).
 
 <details>
   <summary>Text-to-Video</summary>
