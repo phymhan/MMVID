@@ -30,9 +30,7 @@ def main():
     from utils.utils_args import process_args
     args = process_args()
 
-    main_worker(
-        args,
-    )
+    main_worker(args, )
 
 
 @torch.no_grad()
@@ -108,8 +106,8 @@ def main_worker(args):
 
     # get vae model
     vae, _ = get_vae_model(args.which_vae,
-                            vae_path=args.vae_path,
-                            image_size=args.image_size)
+                           vae_path=args.vae_path,
+                           image_size=args.image_size)
 
     cvae = None
     if args.use_cvae:

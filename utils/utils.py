@@ -51,9 +51,12 @@ def save_video(xseq, path):
 
 
 def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[0]  # First element of model_output contains all token embeddings
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+    token_embeddings = model_output[
+        0]  # First element of model_output contains all token embeddings
+    input_mask_expanded = attention_mask.unsqueeze(-1).expand(
+        token_embeddings.size()).float()
+    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
+        input_mask_expanded.sum(1), min=1e-9)
 
 
 def clip_similarity(model, tokenizer, image, description):
@@ -64,7 +67,8 @@ def clip_similarity(model, tokenizer, image, description):
         image = F.interpolate(image, (input_resolution, input_resolution))
     image_mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).cuda()
     image_std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).cuda()
-    image_input = (image - image_mean[:, None, None]) / image_std[:, None, None]
+    image_input = (image - image_mean[:, None, None]) / image_std[:, None,
+                                                                  None]
     text_input = tokenizer.tokenize(
         description,
         context_length,
@@ -76,7 +80,8 @@ def clip_similarity(model, tokenizer, image, description):
 
     image_features /= image_features.norm(dim=-1, keepdim=True)
     text_features /= text_features.norm(dim=-1, keepdim=True)
-    similarity = (text_features.cpu().numpy() * image_features.cpu().numpy()).sum(1)
+    similarity = (text_features.cpu().numpy() *
+                  image_features.cpu().numpy()).sum(1)
     return similarity
 
 

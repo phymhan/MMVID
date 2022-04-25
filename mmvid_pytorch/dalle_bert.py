@@ -856,14 +856,11 @@ class BERT(nn.Module):
         b, n, c = tokens.shape
         tokens_shuffled = tokens_shuffled.reshape(b, t, n // t, -1)
         idx = np.random.randint(0, t, b)
-        frames_shuffled = torch.cat(
-            torch.chunk(
-                tokens_shuffled[range(b), idx, ...],
-                2,
-                dim=0
-            )[::-1],
-            dim=0
-        )
+        frames_shuffled = torch.cat(torch.chunk(tokens_shuffled[range(b), idx,
+                                                                ...],
+                                                2,
+                                                dim=0)[::-1],
+                                    dim=0)
         tokens_shuffled[range(b), idx, ...] = frames_shuffled
         tokens_shuffled = tokens_shuffled.reshape(b, n, c)
         return tokens_shuffled
@@ -1045,7 +1042,8 @@ class BERT(nn.Module):
         # NOTE: Relevance Estimation Task
 
         if rel:
-            assert text_shape[0] >= 2 and text_shape[0] % 2 == 0  # for REL swapping
+            assert text_shape[
+                0] >= 2 and text_shape[0] % 2 == 0  # for REL swapping
             if negvc:
                 tokens_neg_rel = torch.cat(
                     (control_neg_emb, target_emb_masked + target_pos_emb),

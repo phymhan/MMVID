@@ -515,6 +515,8 @@ def build_model(state_dict: dict):
 """
 Above is the the original code from CLIP, below is what I added for MMVID
 """
+
+
 class OpenAICLIPTransformer(nn.Module):
     def __init__(
         self,

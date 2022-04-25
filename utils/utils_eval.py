@@ -42,11 +42,9 @@ def evaluate(args,
     USE_HTML = True
 
     if USE_HTML:
-        webpage = utils_html.initialize_webpage(
-            LOG_WEB_DIR,
-            'DALLE: ' + args.name + ' FVD',
-            reverse=False
-        )
+        webpage = utils_html.initialize_webpage(LOG_WEB_DIR,
+                                                'DALLE: ' + args.name + ' FVD',
+                                                reverse=False)
     else:
         webpage = None
     N_FRAME = args.num_targets

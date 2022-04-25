@@ -9,6 +9,7 @@ from tqdm import tqdm
 import PIL
 from PIL import Image
 import decord
+
 decord.bridge.set_bridge("torch")
 
 import torch
@@ -16,9 +17,9 @@ from torch.utils.data import Dataset
 from torchvision import transforms as T
 import torchvision.transforms.functional as TF
 
-
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
 VID_EXTENSIONS = ['.mp4', '.avi']
+
 
 def is_image_file(filename):
     """Checks if a file is an image.
@@ -60,12 +61,14 @@ def read_frames_imagestack(video_path, frame_idxs=None):
     imgs = Image.open(video_path).convert('RGB')  # size (W, H)
     imgs = np.array(imgs)  # shape (H, W, C)
     horizontal = imgs.shape[1] > imgs.shape[0]
-    shorter, longer = min(imgs.shape[0], imgs.shape[1]), max(imgs.shape[0], imgs.shape[1])
+    shorter, longer = min(imgs.shape[0],
+                          imgs.shape[1]), max(imgs.shape[0], imgs.shape[1])
     vlen = longer // shorter
     frames = np.stack(np.split(imgs, vlen, axis=1 if horizontal else 0))
     if frame_idxs:
         frames = frames[frame_idxs, ...]
-    frames = torch.from_numpy(frames).permute(0, 3, 1, 2).float() / 255  # tensor of shape (T, C, H, W), range (0, 1)
+    frames = torch.from_numpy(frames).permute(
+        0, 3, 1, 2).float() / 255  # tensor of shape (T, C, H, W), range (0, 1)
     return frames
 
 
@@ -92,7 +95,8 @@ class TextImageDataset(Dataset):
         self.image_only = image_only
         path = Path(folder)
 
-        cache = path.parent / (path.name + '_local.db') if cache is None else Path(cache)
+        cache = path.parent / (path.name +
+                               '_local.db') if cache is None else Path(cache)
         if cache is not None and cache.exists():
             with open(cache, 'rb') as f:
                 self.keys, self.text_files, self.image_files = pickle.load(f)
@@ -103,17 +107,30 @@ class TextImageDataset(Dataset):
                 *path.glob('**/*.jpeg'), *path.glob('**/*.bmp')
             ]
 
-            text_files = {text_file.stem: text_file for text_file in text_files}
-            image_files = {image_file.stem: image_file for image_file in image_files}
+            text_files = {
+                text_file.stem: text_file
+                for text_file in text_files
+            }
+            image_files = {
+                image_file.stem: image_file
+                for image_file in image_files
+            }
 
             keys = (image_files.keys() & text_files.keys())
 
             self.keys = list(keys)
-            self.text_files = {k: v for k, v in text_files.items() if k in keys}
-            self.image_files = {k: v for k, v in image_files.items() if k in keys}
+            self.text_files = {
+                k: v
+                for k, v in text_files.items() if k in keys
+            }
+            self.image_files = {
+                k: v
+                for k, v in image_files.items() if k in keys
+            }
             if cache is not None:
                 with open(cache, 'wb') as f:
-                    pickle.dump((self.keys, self.text_files, self.image_files), f)
+                    pickle.dump((self.keys, self.text_files, self.image_files),
+                                f)
 
         self.text_len = text_len
         self.truncate_captions = truncate_captions
@@ -122,7 +139,7 @@ class TextImageDataset(Dataset):
         if deterministic:
             self.image_transform = T.Compose([
                 T.Lambda(lambda img: img.convert('RGB')
-                    if img.mode != 'RGB' else img),
+                         if img.mode != 'RGB' else img),
                 T.Resize(image_size),
                 T.CenterCrop(image_size),
                 T.ToTensor()
@@ -130,7 +147,7 @@ class TextImageDataset(Dataset):
         else:
             self.image_transform = T.Compose([
                 T.Lambda(lambda img: img.convert('RGB')
-                    if img.mode != 'RGB' else img),
+                         if img.mode != 'RGB' else img),
                 T.RandomResizedCrop(image_size,
                                     scale=(self.resize_ratio, 1.),
                                     ratio=(1., 1.)),
@@ -169,17 +186,16 @@ class TextImageDataset(Dataset):
             return self.skip_sample(ind)
 
         tokenized_text = self.tokenizer.tokenize(
-            description,
-            self.text_len,
-            truncate_text=self.truncate_captions
+            description, self.text_len, truncate_text=self.truncate_captions
         ).squeeze(0) if self.tokenizer is not None else description
         try:
             image_tensor = self.image_transform(PIL.Image.open(image_file))
-        except (PIL.UnidentifiedImageError, OSError) as corrupt_image_exceptions:
+        except (PIL.UnidentifiedImageError,
+                OSError) as corrupt_image_exceptions:
             print(f"An exception occurred trying to load file {image_file}.")
             print(f"Skipping index {ind}")
             return self.skip_sample(ind)
-        
+
         if self.image_only:
             return image_tensor, 0
 
@@ -235,11 +251,13 @@ class TextVideoDataset(Dataset):
         self.nframe_num = nframe_num
         frame_step_max = self.frame_step
         if skip_min_len_check:
-            self.min_len = max(min_len, (self.frame_num - 1) * int(self.frame_step * 1.5) + 1)
+            self.min_len = max(
+                min_len, (self.frame_num - 1) * int(self.frame_step * 1.5) + 1)
         else:
-            self.min_len = max(min_len, (self.frame_num - 1) * frame_step_max + 1)
+            self.min_len = max(min_len,
+                               (self.frame_num - 1) * frame_step_max + 1)
         self.unbind = False
-        self.return_vc  = return_vc
+        self.return_vc = return_vc
         self.return_neg = return_neg
         self.video_only = video_only
         self.drop_sentence = drop_sentence
@@ -248,30 +266,37 @@ class TextVideoDataset(Dataset):
         self.root = dataroot
         video_root = os.path.join(dataroot, 'video')
         text_root = os.path.join(dataroot, 'txt')
-        cache = path.parent / (path.name + '_local.pkl') if cache is None else Path(cache)
+        cache = path.parent / (path.name +
+                               '_local.pkl') if cache is None else Path(cache)
         if cache is not None and cache.exists():
             with open(cache, 'rb') as f:
                 cache_data = pickle.load(f)
-            assert(isinstance(cache_data, dict))
+            assert (isinstance(cache_data, dict))
             self.keys = cache_data['keys']
-            self.texts, self.videos, self.lengths = cache_data['texts'], cache_data['videos'], cache_data['lengths']
+            self.texts, self.videos, self.lengths = cache_data[
+                'texts'], cache_data['videos'], cache_data['lengths']
         else:
             text_files = os.listdir(text_root)
             text_dict = dict()
             video_dict = dict()
             length_dict = dict()
             keys_list = list()
-            for i, video in enumerate(tqdm(os.listdir(video_root), desc="Counting videos")):
+            for i, video in enumerate(
+                    tqdm(os.listdir(video_root), desc="Counting videos")):
                 key = video  # no stem
                 text = key + '.txt'
-                if os.path.isdir(os.path.join(video_root, key)) and text in text_files:
-                    frames = natsorted(os.listdir(os.path.join(video_root, key)))
+                if os.path.isdir(os.path.join(video_root,
+                                              key)) and text in text_files:
+                    frames = natsorted(
+                        os.listdir(os.path.join(video_root, key)))
                 else:
                     continue
                 frame_list = []
                 for j, frame_name in enumerate(frames):
-                    if is_image_file(os.path.join(video_root, key, frame_name)):
-                        frame_list.append(os.path.join('video', key, frame_name))
+                    if is_image_file(os.path.join(video_root, key,
+                                                  frame_name)):
+                        frame_list.append(
+                            os.path.join('video', key, frame_name))
                 if len(frame_list) > 0:
                     # add entry
                     keys_list.append(key)
@@ -292,9 +317,8 @@ class TextVideoDataset(Dataset):
                             'texts': self.texts,
                             'videos': self.videos,
                             'lengths': self.lengths,
-                        }, f
-                    )
-        
+                        }, f)
+
         if return_neg:
             attr_cache = path.parent / (path.name + '_attr_dict.pkl')
             if attr_cache.exists():
@@ -303,7 +327,8 @@ class TextVideoDataset(Dataset):
             else:
                 attr_dict = {'text': {}}
                 for k in tqdm(self.keys):
-                    descriptions = Path(os.path.join(self.root, self.texts[k])).read_text().split('\n')
+                    descriptions = Path(os.path.join(
+                        self.root, self.texts[k])).read_text().split('\n')
                     description = descriptions[0]
                     text = description.lower().replace(',', '')
                     if text in attr_dict['text']:
@@ -328,7 +353,8 @@ class TextVideoDataset(Dataset):
             for attr_type in self.attr_dict:
                 attr_dict[attr_type] = {}
                 for attr in self.attr_dict[attr_type].keys():
-                    attr_dict[attr_type][attr] = list(set(self.attr_dict[attr_type][attr]) & set(keys_keep))
+                    attr_dict[attr_type][attr] = list(
+                        set(self.attr_dict[attr_type][attr]) & set(keys_keep))
             self.attr_dict = attr_dict
 
         if self.mode == 'video':
@@ -341,29 +367,24 @@ class TextVideoDataset(Dataset):
         # image transform
         self.deterministic = deterministic
         if deterministic:
-            self.image_transform = T.Compose(
-                [
-                    T.Resize(image_size),
-                    T.CenterCrop(image_size),
-                ]
-            )
+            self.image_transform = T.Compose([
+                T.Resize(image_size),
+                T.CenterCrop(image_size),
+            ])
         else:
-            self.image_transform = T.Compose(
-                [
-                    # transforms.ToTensor(),  # this should be done in __getitem__
-                    # T.RandomHorizontalFlip(),
-                    T.Resize(image_size),
-                    # T.CenterCrop(image_size),
-                    T.RandomResizedCrop(
-                        image_size,
-                        scale=(self.resize_ratio, 1.),
-                        ratio=(1., 1.)
-                    ),
-                ]
-            )
+            self.image_transform = T.Compose([
+                # transforms.ToTensor(),  # this should be done in __getitem__
+                # T.RandomHorizontalFlip(),
+                T.Resize(image_size),
+                # T.CenterCrop(image_size),
+                T.RandomResizedCrop(image_size,
+                                    scale=(self.resize_ratio, 1.),
+                                    ratio=(1., 1.)),
+            ])
 
     def _get_label(self, key):
-        label_file = Path(os.path.join(self.root, self.texts[key].replace('txt/', 'label/')))
+        label_file = Path(
+            os.path.join(self.root, self.texts[key].replace('txt/', 'label/')))
         label = label_file.read_text().rstrip()
         return int(label)
 
@@ -372,19 +393,25 @@ class TextVideoDataset(Dataset):
             frame_step = self.frame_step
         key = self.keys[index]
         video_len = self.lengths[key]
-        start_idx = 0 if self.deterministic else random.randint(0, video_len - (self.frame_num - 1) * frame_step - 1)  # inclusive
+        start_idx = 0 if self.deterministic else random.randint(
+            0, video_len - (self.frame_num - 1) * frame_step - 1)  # inclusive
         frames = []
         if self.rep_num == 1:
-            frame_idx = range(start_idx, start_idx+self.frame_num*frame_step, frame_step)
+            frame_idx = range(start_idx,
+                              start_idx + self.frame_num * frame_step,
+                              frame_step)
         else:
-            m_step = int((video_len - (self.frame_num - 1)*frame_step)/self.rep_num)
+            m_step = int(
+                (video_len - (self.frame_num - 1) * frame_step) / self.rep_num)
             frame_idx = []
             for m in range(self.rep_num):
                 start_idx = m_step * m
-                frame_idx += list(range(start_idx, start_idx+self.frame_num*frame_step, frame_step))
+                frame_idx += list(
+                    range(start_idx, start_idx + self.frame_num * frame_step,
+                          frame_step))
         for i in frame_idx:
             img = Image.open(os.path.join(self.root, self.videos[key][i]))
-            img = T.Resize((self.image_size,self.image_size))(img)
+            img = T.Resize((self.image_size, self.image_size))(img)
             frames.append(to_tensor(img))  # to_tensor done here
         frames = torch.stack(frames, 0)
         frames = self.image_transform(frames)
@@ -403,7 +430,8 @@ class TextVideoDataset(Dataset):
         delta_r = int(video_len * (1 - keep_ratio) / 2)
         delta_l = int(video_len * (1 - keep_ratio)) - delta_r
         frame_idx = random.randint(delta_l, video_len - delta_r - 1)
-        frame = Image.open(os.path.join(self.root, self.videos[key][frame_idx]))
+        frame = Image.open(os.path.join(self.root,
+                                        self.videos[key][frame_idx]))
         frame = self.image_transform(to_tensor(frame))
         if True:
             idx = random.randint(delta_l, video_len - delta_r - 1)
@@ -422,7 +450,8 @@ class TextVideoDataset(Dataset):
             frame_id = index - self.cumsum[video_id] - 1
         key = self.keys[video_id]
         frame = Image.open(os.path.join(self.root, self.videos[key][frame_id]))
-        frame = self.image_transform(to_tensor(frame))  # no ToTensor in transform
+        frame = self.image_transform(
+            to_tensor(frame))  # no ToTensor in transform
         return frame, key
 
     def _get_nframe(self, index):
@@ -436,7 +465,8 @@ class TextVideoDataset(Dataset):
         key = self.keys[video_id]
         frames = []
         for i in range(self.nframe_num):
-            frame = Image.open(os.path.join(self.root, self.videos[key][frame_id + i]))
+            frame = Image.open(
+                os.path.join(self.root, self.videos[key][frame_id + i]))
             frames.append(to_tensor(frame))
         frames = torch.stack(frames, 0)
         frames = self.image_transform(frames)
@@ -497,7 +527,7 @@ class TextVideoDataset(Dataset):
                         description = description.split(', ')[0] + '.'
                 else:
                     # num_drop = random.randint(0, min(len(description_)-1, 3))
-                    num_drop = random.randint(0, len(description_)-1)
+                    num_drop = random.randint(0, len(description_) - 1)
                     for _ in range(num_drop):
                         description_.remove(random.choice(description_))
                     description = '. '.join(description_)
@@ -514,7 +544,8 @@ class TextVideoDataset(Dataset):
 
         if self.return_neg:
             text = descriptions[0].lower().replace(',', '')
-            text_ = choice(list(set(self.attr_dict['text'].keys())-set([text])))
+            text_ = choice(
+                list(set(self.attr_dict['text'].keys()) - set([text])))
             key_ = choice(self.attr_dict['text'][text_])
             text_file = Path(os.path.join(self.root, self.texts[key_]))
             descriptions = text_file.read_text().split('\n')
@@ -533,7 +564,8 @@ class TextVideoDataset(Dataset):
 
 def sample_frames(num_frames, vlen, sample='rand', fix_start=None):
     acc_samples = min(num_frames, vlen)
-    intervals = np.linspace(start=0, stop=vlen, num=acc_samples + 1).astype(int)
+    intervals = np.linspace(start=0, stop=vlen,
+                            num=acc_samples + 1).astype(int)
     ranges = []
     for idx, interv in enumerate(intervals[:-1]):
         ranges.append((interv, intervals[idx + 1] - 1))
@@ -548,14 +580,19 @@ def sample_frames(num_frames, vlen, sample='rand', fix_start=None):
 
     return frame_idxs
 
+
 def read_frames_decord(video_path, num_frames, sample='rand', fix_start=None):
     video_reader = decord.VideoReader(video_path, num_threads=1)
     vlen = len(video_reader)
-    frame_idxs = sample_frames(num_frames, vlen, sample=sample, fix_start=fix_start)
+    frame_idxs = sample_frames(num_frames,
+                               vlen,
+                               sample=sample,
+                               fix_start=fix_start)
     frames = video_reader.get_batch(frame_idxs)
     frames = frames.float() / 255
     frames = frames.permute(0, 3, 1, 2)
     return frames, frame_idxs
+
 
 class TextMP4Dataset(Dataset):
     def __init__(
@@ -596,9 +633,9 @@ class TextMP4Dataset(Dataset):
         self.frame_num = frame_num
         self.frame_step = frame_step
         self.nframe_num = nframe_num
-        self.min_len  = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
+        self.min_len = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
         self.unbind = False
-        self.return_vc  = return_vc
+        self.return_vc = return_vc
         self.return_text = return_text
         self.return_label = return_label
         self.image_only = image_only
@@ -613,27 +650,31 @@ class TextMP4Dataset(Dataset):
 
         # Build or load cache
         video_files = os.listdir(video_root)
-        cache = path.parent / (path.name + '_local.pkl') if cache is None else Path(cache)
+        cache = path.parent / (path.name +
+                               '_local.pkl') if cache is None else Path(cache)
         if cache is not None and cache.exists():
             with open(cache, 'rb') as f:
                 cache_data = pickle.load(f)
-            assert(isinstance(cache_data, dict))
+            assert (isinstance(cache_data, dict))
             self.keys = cache_data['keys']
-            self.texts, self.videos, self.lengths = cache_data['texts'], cache_data['videos'], cache_data['lengths']
+            self.texts, self.videos, self.lengths = cache_data[
+                'texts'], cache_data['videos'], cache_data['lengths']
         else:
             text_files = os.listdir(text_root)
             text_dict = dict()
             video_dict = dict()
             length_dict = dict()
             keys_list = list()
-            for i, video in enumerate(tqdm(video_files, desc="Counting videos")):
+            for i, video in enumerate(tqdm(video_files,
+                                           desc="Counting videos")):
                 videoid = Path(video).stem
                 text = videoid + '.txt'
                 if is_video_file(video) and text in text_files:
                     # get video info
                     video_path = os.path.join(self.root, 'video', video)
                     try:
-                        video_reader = decord.VideoReader(video_path, num_threads=1)
+                        video_reader = decord.VideoReader(video_path,
+                                                          num_threads=1)
                         vlen = len(video_reader)
                         # add entry
                         keys_list.append(videoid)
@@ -655,8 +696,7 @@ class TextMP4Dataset(Dataset):
                             'texts': self.texts,
                             'videos': self.videos,
                             'lengths': self.lengths,
-                        }, f
-                    )
+                        }, f)
 
         # Filter out videos that are too short
         keys_keep = [k for k in self.keys if self.lengths[k] >= self.min_len]
@@ -673,42 +713,41 @@ class TextMP4Dataset(Dataset):
             self._dataset_length = len(self.keys)
         else:
             raise NotImplementedError
-        
+
         # image transform
         if deterministic:
-            self.image_transform = T.Compose(
-                [
-                    T.Resize(image_size),
-                    T.CenterCrop(image_size),
-                ]
-            )
+            self.image_transform = T.Compose([
+                T.Resize(image_size),
+                T.CenterCrop(image_size),
+            ])
         else:
-            self.image_transform = T.Compose(
-                [
-                    # transforms.ToTensor(),  # this should be done in __getitem__
-                    # T.RandomHorizontalFlip(),
-                    T.Resize(image_size),
-                    # T.CenterCrop(image_size),
-                    T.RandomResizedCrop(
-                        image_size,
-                        scale=(self.resize_ratio, 1.),
-                        ratio=(1., 1.)
-                    ),
-                ]
-            )
+            self.image_transform = T.Compose([
+                # transforms.ToTensor(),  # this should be done in __getitem__
+                # T.RandomHorizontalFlip(),
+                T.Resize(image_size),
+                # T.CenterCrop(image_size),
+                T.RandomResizedCrop(image_size,
+                                    scale=(self.resize_ratio, 1.),
+                                    ratio=(1., 1.)),
+            ])
 
     def _get_label(self, key):
-        label_file = Path(os.path.join(self.root, self.texts[key].replace('txt/', 'label/')))
+        label_file = Path(
+            os.path.join(self.root, self.texts[key].replace('txt/', 'label/')))
         label = label_file.read_text().rstrip()
         return int(label)
 
     def _get_video(self, index):
         key = self.keys[index]
         video_len = self.lengths[key]
-        start_idx = random.randint(0, video_len - (self.frame_num - 1) * self.frame_step - 1)  # inclusive
+        start_idx = random.randint(0, video_len -
+                                   (self.frame_num - 1) * self.frame_step -
+                                   1)  # inclusive
         video_path = os.path.join(self.root, self.videos[key])
         video_reader = decord.VideoReader(video_path, num_threads=1)
-        frame_idxs = range(start_idx, start_idx+self.frame_num*self.frame_step, self.frame_step)
+        frame_idxs = range(start_idx,
+                           start_idx + self.frame_num * self.frame_step,
+                           self.frame_step)
         frames = video_reader.get_batch(frame_idxs)
         frames = frames.float() / 255  # to [0, 1]
         frames = frames.permute(0, 3, 1, 2)
@@ -853,9 +892,9 @@ class TextImageStackDataset(Dataset):
         self.frame_num = frame_num
         self.frame_step = frame_step
         self.nframe_num = nframe_num
-        self.min_len  = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
+        self.min_len = max(min_len, (self.frame_num - 1) * self.frame_step + 1)
         self.unbind = False
-        self.return_vc  = return_vc
+        self.return_vc = return_vc
         self.return_text = return_text
         self.return_label = return_label
         self.image_only = image_only
@@ -869,20 +908,23 @@ class TextImageStackDataset(Dataset):
 
         # Build or load cache
         video_files = os.listdir(video_root)
-        cache = path.parent / (path.name + '_local.pkl') if cache is None else Path(cache)
+        cache = path.parent / (path.name +
+                               '_local.pkl') if cache is None else Path(cache)
         if cache is not None and cache.exists():
             with open(cache, 'rb') as f:
                 cache_data = pickle.load(f)
-            assert(isinstance(cache_data, dict))
+            assert (isinstance(cache_data, dict))
             self.keys = cache_data['keys']
-            self.texts, self.videos, self.lengths = cache_data['texts'], cache_data['videos'], cache_data['lengths']
+            self.texts, self.videos, self.lengths = cache_data[
+                'texts'], cache_data['videos'], cache_data['lengths']
         else:
             text_files = os.listdir(text_root)
             text_dict = dict()
             video_dict = dict()
             length_dict = dict()
             keys_list = list()
-            for i, video in enumerate(tqdm(video_files, desc="Counting videos")):
+            for i, video in enumerate(tqdm(video_files,
+                                           desc="Counting videos")):
                 videoid = Path(video).stem
                 text = videoid + '.txt'
                 if is_image_file(video) and text in text_files:
@@ -892,7 +934,9 @@ class TextImageStackDataset(Dataset):
                         imgs = Image.open(video_path).convert('RGB')
                         imgs = np.array(imgs)  # [H, W, C]
                         # horizontal = imgs.shape[1] > imgs.shape[0]
-                        shorter, longer = min(imgs.shape[0], imgs.shape[1]), max(imgs.shape[0], imgs.shape[1])
+                        shorter, longer = min(imgs.shape[0],
+                                              imgs.shape[1]), max(
+                                                  imgs.shape[0], imgs.shape[1])
                         vlen = longer // shorter
                         # frames = np.split(imgs, vlen, axis=1 if horizontal else 0)
 
@@ -916,8 +960,7 @@ class TextImageStackDataset(Dataset):
                             'texts': self.texts,
                             'videos': self.videos,
                             'lengths': self.lengths,
-                        }, f
-                    )
+                        }, f)
 
         # Filter out videos that are too short
         keys_keep = [k for k in self.keys if self.lengths[k] >= self.min_len]
@@ -934,35 +977,33 @@ class TextImageStackDataset(Dataset):
             self._dataset_length = len(self.keys)
         else:
             raise NotImplementedError
-        
+
         # image transform
         if deterministic:
-            self.image_transform = T.Compose(
-                [
-                    T.Resize(image_size),
-                    T.CenterCrop(image_size),
-                ]
-            )
+            self.image_transform = T.Compose([
+                T.Resize(image_size),
+                T.CenterCrop(image_size),
+            ])
         else:
-            self.image_transform = T.Compose(
-                [
-                    # transforms.ToTensor(),  # this should be done in __getitem__
-                    # T.RandomHorizontalFlip(),
-                    T.Resize(image_size),
-                    # T.CenterCrop(image_size),
-                    T.RandomResizedCrop(
-                        image_size,
-                        scale=(self.resize_ratio, 1.),
-                        ratio=(1., 1.)
-                    ),
-                ]
-            )
+            self.image_transform = T.Compose([
+                # transforms.ToTensor(),  # this should be done in __getitem__
+                # T.RandomHorizontalFlip(),
+                T.Resize(image_size),
+                # T.CenterCrop(image_size),
+                T.RandomResizedCrop(image_size,
+                                    scale=(self.resize_ratio, 1.),
+                                    ratio=(1., 1.)),
+            ])
 
     def _get_video(self, index):
         key = self.keys[index]
         video_len = self.lengths[key]
-        start_idx = random.randint(0, video_len - (self.frame_num - 1) * self.frame_step - 1)  # inclusive
-        frame_idxs = range(start_idx, start_idx+self.frame_num*self.frame_step, self.frame_step)
+        start_idx = random.randint(0, video_len -
+                                   (self.frame_num - 1) * self.frame_step -
+                                   1)  # inclusive
+        frame_idxs = range(start_idx,
+                           start_idx + self.frame_num * self.frame_step,
+                           self.frame_step)
         video_path = os.path.join(self.root, self.videos[key])
         frames = read_frames_imagestack(video_path, frame_idxs)
         image_tensor = self.image_transform(frames)
@@ -970,7 +1011,8 @@ class TextImageStackDataset(Dataset):
             return image_tensor, key, None
         if self.has_visual:
             idx = random.randint(0, video_len - 1)
-            visual_path = os.path.join(self.root, 'visual', Path(self.videos[key]).name)
+            visual_path = os.path.join(self.root, 'visual',
+                                       Path(self.videos[key]).name)
             visuals = read_frames_imagestack(visual_path, [idx])
             visual_tensor = self.image_transform(visuals[0])
         else:
@@ -995,7 +1037,8 @@ class TextImageStackDataset(Dataset):
             return image_tensor, key, None
         if self.has_visual:
             idx = random.randint(0, video_len - 1)
-            visual_path = os.path.join(self.root, 'visual', Path(self.videos[key]).name)
+            visual_path = os.path.join(self.root, 'visual',
+                                       Path(self.videos[key]).name)
             visuals = read_frames_imagestack(visual_path, [idx])
             visual_tensor = self.image_transform(visuals[0])
         else:
@@ -1019,9 +1062,10 @@ class TextImageStackDataset(Dataset):
         if self.shuffle:
             return self.random_sample()
         return self.sequential_sample(ind=ind)
-    
+
     def _get_label(self, key):
-        label_path = os.path.join(self.root, self.texts[key]).replace('txt/', 'label/')
+        label_path = os.path.join(self.root,
+                                  self.texts[key]).replace('txt/', 'label/')
         label = [int(s) for s in Path(label_path).read_text().split(',')]
         return np.array(label)
 

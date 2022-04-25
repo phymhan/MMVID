@@ -8,9 +8,9 @@ from torch import nn
 
 from einops import rearrange
 
-
 # VQGAN from Taming Transformers paper
 # https://arxiv.org/abs/2012.09841
+
 
 class VQGanVAE1024(nn.Module):
     def __init__(self, vae_path=None, image_size=None):
