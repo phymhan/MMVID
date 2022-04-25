@@ -1,9 +1,9 @@
 # Multimodal VoxCeleb Dataset
 
-This dataset is built on top of the [VoxCeleb1](https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html) dataset. We provide facial attribute annotations and additional segmentation masks and artistic drawings for each video.
+This dataset is built on top of the [VoxCeleb1](https://www.robots.ox.ac.uk/~vgg/data/voxceleb/vox1.html) dataset. We provide facial attribute annotations, segmentation masks, and artistic drawings for each video.
 - Video: Videos are cropped with [video-preocessing](https://github.com/AliaksandrSiarohin/video-preprocessing).
 - Label: We provide manually annotated facial attributes for each cropped video. The annotation is provided [here](https://drive.google.com/file/d/1Q-ZxGfhNLlIC0X1cW2riBFZ6cz_3tcjy/view?usp=sharing).
-- Text: As described [here](https://github.com/IIGROUP/Multi-Modal-CelebA-HQ-Dataset/issues/3), the textual descriptions are generated using probabilistic context-free grammar (PCFG) based on the given attributes. Code to generate texts is provided in `MMVID/mm_vox_celeb/make_text.py`.
+- Text: As described [here](https://github.com/IIGROUP/Multi-Modal-CelebA-HQ-Dataset/issues/3), the textual descriptions are generated using probabilistic context-free grammar (PCFG) based on the given attributes. Code to generate texts is provided in [here](https://github.com/phymhan/MMVID/blob/master/mm_vox_celeb/make_text.py).
 - Segmentation: We run [face-parsing](https://github.com/zllrunning/face-parsing.PyTorch) to generate segmentation masks for each cropped video. The script is provided [here](https://github.com/phymhan/face-parsing.PyTorch/blob/f6b22fd9488f57210751593a3342e67e7431d5df/generate_mask.py).
 - Drawing: We run [Unpaired Portrait Drawing](https://github.com/yiranran/Unpaired-Portrait-Drawing) to generate artistic drawings for each cropped video. The script to generate drawings is provided [here](https://github.com/phymhan/Unpaired-Portrait-Drawing/blob/1e1fabaca51b8f8f86cb299615cae661d4f834f2/generate_drawing.py).
 
