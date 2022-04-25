@@ -35,6 +35,7 @@ Code for finetuning VQGAN models is provided in [this repo](https://github.com/p
 
 ## Multimodal VoxCeleb
 
+For testing, please download [pretrained models](https://github.com/phymhan/MMVID#pretrained-models) and change the path for `--dalle_path` in the scripts.
 
 For quantitative evaluation, append `--eval_mode eval` to each testing command. Output log directory can be changed by appending `--name_suffix _fvd` to add suffix (example [here](https://github.com/phymhan/MMVID/blob/master/scripts/mmvoxceleb/text_to_video/evaluation.sh)).
 
